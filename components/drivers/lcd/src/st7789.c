@@ -84,7 +84,7 @@ void tft_write_byte(uint8_t *data_buf, uint32_t length)
     if(!standard_spi)
     {
         spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 8, 0);
-        spi_init_non_standard(SPI_CHANNEL, 0 /*instrction length*/, 8 /*address length*/, 0 /*wait cycles*/,
+        spi_init_non_standard(SPI_CHANNEL, 8 /*instrction length*/, 0 /*address length*/, 0 /*wait cycles*/,
                                 SPI_AITM_AS_FRAME_FORMAT /*spi address trans mode*/);
         spi_send_data_normal_dma(SPI_DMA_CH, SPI_CHANNEL, LCD_SPI_SLAVE_SELECT, data_buf, length, SPI_TRANS_CHAR);
     }
@@ -101,7 +101,7 @@ void tft_write_half(uint16_t *data_buf, uint32_t length)
     if(!standard_spi)
     {
         spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 16, 0);
-        spi_init_non_standard(SPI_CHANNEL, 0 /*instrction length*/, 16 /*address length*/, 0 /*wait cycles*/,
+        spi_init_non_standard(SPI_CHANNEL, 16 /*instrction length*/, 0 /*address length*/, 0 /*wait cycles*/,
                             SPI_AITM_AS_FRAME_FORMAT /*spi address trans mode*/);
         spi_send_data_normal_dma(SPI_DMA_CH, SPI_CHANNEL, LCD_SPI_SLAVE_SELECT, data_buf, length, SPI_TRANS_SHORT);
     }

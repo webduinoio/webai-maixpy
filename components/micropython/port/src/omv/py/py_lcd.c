@@ -201,10 +201,10 @@ static mp_obj_t py_lcd_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *k
         {MP_QSTR_offset_h0, MP_ARG_INT, {.u_int = 0}},
         {MP_QSTR_offset_w1, MP_ARG_INT, {.u_int = 0}},
         {MP_QSTR_offset_h1, MP_ARG_INT, {.u_int = 0}},
-        {MP_QSTR_rst, MP_ARG_INT, {.u_int = 37}},
+        {MP_QSTR_rst, MP_ARG_INT, {.u_int = 39}},
         {MP_QSTR_dcx, MP_ARG_INT, {.u_int = 38}},
         {MP_QSTR_ss, MP_ARG_INT, {.u_int = 36}},
-        {MP_QSTR_clk, MP_ARG_INT, {.u_int = 39}},
+        {MP_QSTR_clk, MP_ARG_INT, {.u_int = 37}},
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -373,6 +373,17 @@ static mp_obj_t py_lcd_direction(mp_obj_t dir_obj)
 {
     int dir = mp_obj_get_int(dir_obj);
     lcd_set_direction(dir);
+    return mp_const_none;
+}
+
+static mp_obj_t py_lcd_debug(mp_obj_t addr_obj, mp_obj_t data_obj)
+{
+    uint8_t addr = mp_obj_get_int(addr_obj);
+    tft_write_command(addr);
+    if (mp_obj_is_integer(data_obj)) {
+        uint8_t data = mp_obj_get_int(data_obj);
+        tft_write_byte(&data, 1);
+    }
     return mp_const_none;
 }
 
@@ -736,6 +747,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_get_backlight_obj, py_lcd_get_backlight)
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(py_lcd_display_obj, 1, py_lcd_display);
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(py_lcd_clear_obj, 0, py_lcd_clear);
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(py_lcd_direction_obj, py_lcd_direction);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(py_lcd_debug_obj, py_lcd_debug);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(py_lcd_rotation_obj, 0, 1, py_lcd_rotation);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(py_lcd_invert_obj, 0, 1, py_lcd_invert);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(py_lcd_draw_string_obj, 3, 5, py_lcd_draw_string);
@@ -753,6 +765,7 @@ static const mp_map_elem_t globals_dict_table[] = {
     {MP_OBJ_NEW_QSTR(MP_QSTR_display), (mp_obj_t)&py_lcd_display_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_clear), (mp_obj_t)&py_lcd_clear_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_direction), (mp_obj_t)&py_lcd_direction_obj},
+    {MP_OBJ_NEW_QSTR(MP_QSTR_debug), (mp_obj_t)&py_lcd_debug_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_rotation), (mp_obj_t)&py_lcd_rotation_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_mirror), (mp_obj_t)&py_lcd_invert_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_draw_string), (mp_obj_t)&py_lcd_draw_string_obj},

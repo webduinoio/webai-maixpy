@@ -211,7 +211,7 @@ int lcd_init(uint32_t freq, bool oct, uint16_t offset_w0, uint16_t offset_h0, ui
     
     g_lcd_init = true;
 
-    lcd_set_direction(DIR_YX_RLDU);
+    lcd_set_direction(DIR_XY_RLDU);
     if(invert_color)
     {
         tft_write_command(INVERSION_DISPALY_ON);
@@ -219,6 +219,13 @@ int lcd_init(uint32_t freq, bool oct, uint16_t offset_w0, uint16_t offset_h0, ui
     }
     tft_write_command(NORMAL_DISPALY_ON);
     msleep(10);
+
+    tft_write_command(0x51);  
+    data = 0xFF, tft_write_byte(&data, 1);	
+
+    tft_write_command(0x53);  
+    data = 0x2C, tft_write_byte(&data, 1);
+
     /*display on*/
     tft_write_command(DISPALY_ON);
     msleep(100);
