@@ -201,10 +201,10 @@ static mp_obj_t py_lcd_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *k
         {MP_QSTR_offset_h0, MP_ARG_INT, {.u_int = 0}},
         {MP_QSTR_offset_w1, MP_ARG_INT, {.u_int = 0}},
         {MP_QSTR_offset_h1, MP_ARG_INT, {.u_int = 0}},
-        {MP_QSTR_rst, MP_ARG_INT, {.u_int = 37}},
+        {MP_QSTR_rst, MP_ARG_INT, {.u_int = 39}},
         {MP_QSTR_dcx, MP_ARG_INT, {.u_int = 38}},
         {MP_QSTR_ss, MP_ARG_INT, {.u_int = 36}},
-        {MP_QSTR_clk, MP_ARG_INT, {.u_int = 39}},
+        {MP_QSTR_clk, MP_ARG_INT, {.u_int = 37}},
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -767,7 +767,7 @@ static const mp_map_elem_t globals_dict_table[] = {
     {MP_OBJ_NEW_QSTR(MP_QSTR_direction), (mp_obj_t)&py_lcd_direction_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_rotation), (mp_obj_t)&py_lcd_rotation_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_mirror), (mp_obj_t)&py_lcd_invert_obj},
-    {MP_OBJ_NEW_QSTR(MP_QSTR_debug), (mp_obj_t)&py_lcd_write_register_obj},
+    {MP_OBJ_NEW_QSTR(MP_QSTR_write_register, (mp_obj_t)&py_lcd_write_register_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_draw_string), (mp_obj_t)&py_lcd_draw_string_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_XY_RLUD), MP_OBJ_NEW_SMALL_INT(DIR_XY_RLUD)},
     {MP_OBJ_NEW_QSTR(MP_QSTR_YX_RLUD), MP_OBJ_NEW_SMALL_INT(DIR_YX_RLUD)},

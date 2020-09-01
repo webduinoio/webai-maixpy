@@ -110,8 +110,8 @@ static struct sensor_config_t {
     uint8_t gpio_clk;
     uint8_t gpio_sda;
 } sensor_config = {
-    47, 46, 45, 44, 43, 42,
-    8, 2, 41, 40, 0, 0
+    40, 41, 42, 43, 44, 45,
+    16, 2, 46, 47, 0, 0
 };
 
 #define SENSOR_CHECK_CONFIG(GOAL, val)                                                                        \
