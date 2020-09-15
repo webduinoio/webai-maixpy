@@ -384,6 +384,17 @@ static mp_obj_t py_lcd_write_register(mp_obj_t addr_obj, mp_obj_t data_obj)
         uint8_t data = mp_obj_get_int(data_obj);
         tft_write_byte(&data, 1);
     }
+    if(&mp_type_list == mp_obj_get_type(data_obj))
+    {
+        size_t len;
+        mp_obj_t *items;
+        mp_obj_list_get(data_obj, &len, &items);
+        for (mp_int_t i = 0; i < len; i++) {
+            mp_obj_t obj = items[i];
+            uint8_t data = mp_obj_get_int(obj);
+            tft_write_byte(&data, 1);
+        }
+    }
     return mp_const_none;
 }
 
@@ -678,14 +689,14 @@ end:
     return mp_obj_new_int(invert);
 }
 
-//x0,y0,string,font color,bg color
+extern void imlib_draw_ascii_string(image_t *img, int x_off, int y_off, const char *str, int c, float scale, int x_spacing, int y_spacing, bool mono_space);
 STATIC mp_obj_t py_lcd_draw_string(size_t n_args, const mp_obj_t *args)
 {
-    uint32_t *str_buf = NULL;
-    char *str_cut = NULL;
+    uint8_t* str_buf = NULL;
+    char* str_cut = NULL;
     if (width_conf == 0 || height_conf == 0)
         mp_raise_msg(&mp_type_ValueError, "not init");
-    str_buf = (uint32_t *)malloc(width_conf / 8 * 16 * 8 * 2);
+    str_buf = (uint8_t *)malloc(width_conf / 8 * 12 * 8 * 2);
     if (!str_buf)
         mp_raise_OSError(MP_ENOMEM);
     str_cut = (char *)malloc(width_conf / 8 + 1);
@@ -717,9 +728,21 @@ STATIC mp_obj_t py_lcd_draw_string(size_t n_args, const mp_obj_t *args)
     memcpy(str_cut, str, len);
     str_cut[len] = 0;
     width = len * 8;
-    height = 16;
-    lcd_ram_draw_string(str_cut, str_buf, fontc, bgc);
-    lcd_draw_picture(x0, y0, width, height, str_buf);
+    height = 12;
+    image_t arg_img = {
+        .bpp = IMAGE_BPP_RGB565,
+        .w = width,
+        .h = height,
+        .pixels = str_buf
+    };
+    for(int i=0; i< width*height; ++i)
+    {
+        *(uint16_t*)(str_buf + i*2) = (uint16_t)bgc;
+    }
+    imlib_draw_ascii_string(&arg_img, 0, 0, str_cut,
+                      fontc, 1, 0, 0,
+                      true);
+    lcd_draw_picture(x0, y0, width, height, (uint32_t*)str_buf);
     free(str_buf);
     free(str_cut);
     return mp_const_none;
@@ -767,7 +790,7 @@ static const mp_map_elem_t globals_dict_table[] = {
     {MP_OBJ_NEW_QSTR(MP_QSTR_direction), (mp_obj_t)&py_lcd_direction_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_rotation), (mp_obj_t)&py_lcd_rotation_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_mirror), (mp_obj_t)&py_lcd_invert_obj},
-    {MP_OBJ_NEW_QSTR(MP_QSTR_debug), (mp_obj_t)&py_lcd_write_register_obj},
+    {MP_OBJ_NEW_QSTR(MP_QSTR_register), (mp_obj_t)&py_lcd_write_register_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_draw_string), (mp_obj_t)&py_lcd_draw_string_obj},
     {MP_OBJ_NEW_QSTR(MP_QSTR_XY_RLUD), MP_OBJ_NEW_SMALL_INT(DIR_XY_RLUD)},
     {MP_OBJ_NEW_QSTR(MP_QSTR_YX_RLUD), MP_OBJ_NEW_SMALL_INT(DIR_YX_RLUD)},
