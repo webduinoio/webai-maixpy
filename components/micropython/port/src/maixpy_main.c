@@ -440,6 +440,9 @@ volatile bool maixpy_sdcard_loading = true; // There may be deadlocks.
 int sd_preload(int core)
 {
     bool mounted_sdcard = false;
+    extern sdcard_config_t config;
+    sdcard_config_t webai = { 30, 31, 29, 32, SD_CS_PIN };
+    config = webai;
     sd_preinit_config();
     sd_init(); // will wait 3s for sd
     bool sd_is_ready = sdcard_is_present();
@@ -454,29 +457,6 @@ int sd_preload(int core)
             {
                 if (!mounted_sdcard) mounted_sdcard = init_sdcard_fs(); // fail try again mounted_sdcard.
                 // msleep(50);
-            }
-        }
-    }
-
-    // for maix amigo shit code.
-    if (!sd_is_ready && !mounted_sdcard)
-    {
-        extern sdcard_config_t config;
-        sdcard_config_t amigo = { 10, 6, 11, 26, SD_CS_PIN };
-        config = amigo;
-        sd_init(); // will wait 3s for sd
-        if (sdcard_is_present())
-        {
-            // spiffs_stat fno;
-            // if there is a file in the flash called "SKIPSD", then we don't mount the SD card
-            // if (!mounted_flash || SPIFFS_stat(&spiffs_user_mount_handle.fs, "SKIPSD", &fno) != SPIFFS_OK)
-            {
-                mounted_sdcard = init_sdcard_fs();
-                for (int r = 0; r < 4; r++)
-                {
-                    if (!mounted_sdcard) mounted_sdcard = init_sdcard_fs(); // fail try again mounted_sdcard.
-                    // msleep(50);
-                }
             }
         }
     }

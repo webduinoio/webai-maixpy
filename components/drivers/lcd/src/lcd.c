@@ -441,7 +441,7 @@ void lcd_clear(uint16_t color)
         color = SWAP_16(color);
     #endif
     uint32_t data = ((uint32_t)color << 16) | (uint32_t)color;
-    lcd_set_area(0, 0, lcd_ctl.width, lcd_ctl.height);
+    lcd_set_area(0, 0, lcd_ctl.height, lcd_ctl.width);
     tft_fill_data(&data, g_lcd_h * g_lcd_w / 2);
 }
 
