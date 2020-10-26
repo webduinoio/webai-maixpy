@@ -313,6 +313,9 @@ bool get_ipconfig(esp8285_obj* nic, ipconfig_obj* ipconfig)
 	char netmask_buf[16] = {0};
 	sscanf(cur,"netmask:\"%[^\"]\"",netmask_buf);
 	ipconfig->netmask = mp_obj_new_str(netmask_buf,strlen(netmask_buf));
+
+
+
 	//ssid & mac
 	if(false == qATCWJAP_CUR(nic))
 	{
@@ -320,10 +323,14 @@ bool get_ipconfig(esp8285_obj* nic, ipconfig_obj* ipconfig)
 	}
 	char ssid[50] = {0};
 	char MAC[17] = {0};
-	cur = strstr((char*)nic->buffer.buffer, "+CWJAP_CUR:");
-	sscanf(cur, "+CWJAP_CUR:\"%[^\"]\",\"%[^\"]\"", ssid, MAC);
+    char channel[2] = {0};
+	char rssi[4] = {0};
+	cur = strstr((char*)nic->buffer.buffer, "+CWJAP:");
+	sscanf(cur, "+CWJAP:\"%[^\"]\",\"%[^\"]\",%[^,],%[^,]", ssid, MAC,channel,rssi);
 	ipconfig->ssid = mp_obj_new_str(ssid,strlen(ssid));
 	ipconfig->MAC = mp_obj_new_str(MAC,strlen(MAC));
+    ipconfig->channel = mp_obj_new_str(channel,strlen(channel));
+	ipconfig->rssi = mp_obj_new_str(rssi,strlen(rssi));
 	return true;
 }
 
@@ -1295,7 +1302,8 @@ bool sATCIPDOMAIN(esp8285_obj* nic, const char* domain_name, uint32_t timeout)
 bool qATCIPSTA_CUR(esp8285_obj* nic)
 {
 	int errcode = 0;
-	const char* cmd = "AT+CIPSTA_CUR?";
+	// const char* cmd = "AT+CIPSTA_CUR?";
+    const char* cmd = "AT+CIPSTA?";
 	const mp_stream_p_t * uart_stream = mp_get_stream(nic->uart_obj);
 	rx_empty(nic);
 	uart_stream->write(nic->uart_obj,cmd,strlen(cmd),&errcode);
@@ -1335,7 +1343,8 @@ bool sATCIPSTA_CUR(esp8285_obj* nic, const char* ip,char* gateway,char* netmask)
 bool qATCWJAP_CUR(esp8285_obj* nic)
 {
 	int errcode = 0;
-	const char* cmd = "AT+CWJAP_CUR?";
+	// const char* cmd = "AT+CWJAP_CUR?";
+    const char* cmd = "AT+CWJAP?";
 	const mp_stream_p_t * uart_stream = mp_get_stream(nic->uart_obj);
 	rx_empty(nic);
 	uart_stream->write(nic->uart_obj,cmd,strlen(cmd),&errcode);

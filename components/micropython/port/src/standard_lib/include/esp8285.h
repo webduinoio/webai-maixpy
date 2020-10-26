@@ -51,6 +51,8 @@ typedef struct _ipconfig_obj
 	mp_obj_t netmask;
 	mp_obj_t ssid;
 	mp_obj_t MAC;
+	mp_obj_t channel;
+	mp_obj_t rssi;
 }ipconfig_obj;
 
 typedef struct _esp8285_obj
