@@ -16,15 +16,15 @@ typedef enum __iw_state {
   Ready,
   MaybeNoise,
   Restrain,
-  Speek,
+  Speak,
   Done,
 } IwState;
 
 extern v_ftr_tag ftr_curr; // current result
 
-void iw_load(i2s_device_number_t device_num, dmac_channel_number_t channel_num, uint32_t priority);
+void iw_run(i2s_device_number_t device_num, dmac_channel_number_t channel_num, uint32_t priority);
 
-void iw_free();
+void iw_stop();
 
 void iw_atap_tag(uint16_t n_thl, uint16_t z_thl, uint32_t s_thl);
 
