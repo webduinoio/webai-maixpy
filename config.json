@@ -1,0 +1,6 @@
+{
+    "mqttServer": "",
+    "mqttPort": 1883,
+    "mqttAccount": "",
+    "mqttPassword": ""
+}
