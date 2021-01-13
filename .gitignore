@@ -66,3 +66,5 @@ __pycache__
 lib_sipeed_kpu/
 components/nncase/
 
+# config
+.config_default.json
