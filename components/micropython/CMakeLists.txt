@@ -34,6 +34,7 @@ if(CONFIG_COMPONENT_MICROPYTHON_ENABLE)
                             "${mpy_port_dir}/src/modules/ultrasonic/include"
                             "${mpy_port_dir}/src/modules/hcsr04/include"
                             "${mpy_port_dir}/src/speech/include"
+                            "${mpy_port_dir}/src/speech/maix_asr/include"
                             "${mpy_port_dir}/src/speech/isolated_word/include"
                             "${mpy_port_dir}/src/omv/include"
                             "${mpy_port_dir}/src/omv/boards/MAIX"
@@ -58,10 +59,14 @@ if(CONFIG_COMPONENT_MICROPYTHON_ENABLE)
     append_srcs_dir(MPY_PORT_SRCS "port/src/modules")
     append_srcs_dir(MPY_PORT_SRCS "port/src/modules/ultrasonic/src")
     append_srcs_dir(MPY_PORT_SRCS "port/src/modules/hcsr04/src")
+    append_srcs_dir(MPY_PORT_SRCS "port/src/modules/onewire")
     append_srcs_dir(MPY_PORT_SRCS "port/src/speech/")
+    append_srcs_dir(MPY_PORT_SRCS "port/src/speech/maix_asr")
+    list(APPEND ADD_STATIC_LIB "port/src/speech/maix_asr/libmaix_asr.a") # append_srcs_dir(MPY_PORT_SRCS "port/src/speech/maix_asr/src")
     append_srcs_dir(MPY_PORT_SRCS "port/src/speech/isolated_word")
     append_srcs_dir(MPY_PORT_SRCS "port/src/modules/ws2812/src")
     append_srcs_dir(MPY_PORT_SRCS "port/src/modules/htpa/src")
+    append_srcs_dir(MPY_PORT_SRCS "port/src/modules/amg88xx/src")
     append_srcs_dir(MPY_PORT_SRCS "port/src/omv")
     append_srcs_dir(MPY_PORT_SRCS "port/src/omv/img")
     append_srcs_dir(MPY_PORT_SRCS "port/src/omv/py")
@@ -69,6 +74,12 @@ if(CONFIG_COMPONENT_MICROPYTHON_ENABLE)
     append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network")
     append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network/esp32")
     append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network/esp8285")
+    if(CONFIG_MAIXPY_WIZNET5K_ENABLE)
+        append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network/wiznet5k")
+        append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network/wiznet5k/w5500")
+        append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network/wiznet5k/dns")
+        append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/network/wiznet5k/dhcp")
+    endif()
     append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/socket")
     append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/uos")
     append_srcs_dir(MPY_PORT_SRCS "port/src/standard_lib/utime")
