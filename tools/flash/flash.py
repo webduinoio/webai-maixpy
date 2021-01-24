@@ -121,6 +121,7 @@ if __name__ == '__main__':
     print("-- flash firmware:{}".format( firmware ))
     print("")
     print("-- kflash start")
+    processStartTime = time.time()
     # call kflash to burn firmware
     from kflash_py.kflash import KFlash 
 
@@ -145,6 +146,8 @@ if __name__ == '__main__':
         exit(1)
     ######################################################    
     print("== flash end ==")    
+    processEndTime = time.time()
+    print("total time:"+str(processEndTime-processStartTime))
 
     ######################################################
     # open serial tool

@@ -2,7 +2,15 @@ from Maix import FPIOA
 
 class fm:
   fpioa = FPIOA()
-
+  def gpio_init():
+    print("fpioa gpio init")
+    #GPIO0~7
+    for i in range(8,16):
+        __class__.unregister(i)
+    #GPIOHS0~12 13~16 None
+    for i in range(16,29):
+        __class__.unregister(i)
+    #use GPIO0~7 and GPIOHS0~16
   def help():
     __class__.fpioa.help()
 

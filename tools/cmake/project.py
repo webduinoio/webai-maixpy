@@ -130,6 +130,43 @@ if project_args.cmd == "config":
     print("config complete")
 # rebuild / build
 elif project_args.cmd == "build" or project_args.cmd == "rebuild":
+    import json
+    with open('../../config.json','r') as f:
+        config = json.load(f) 
+        # print(config['mqttServer'])
+        # print(config['mqttPort'])
+        # print(config['mqttAccount'])
+        # print(config['mqttPassword'])
+
+    with open('../../components/micropython/port/builtin_py/board_network_default.py','r') as f:
+        lines = f.readlines()
+        count = 0
+        for line in lines:
+            if "mqttServer" in line:
+                # print("find server")
+                line = line.replace('mqttServer',config['mqttServer'])
+                lines[count] = line
+                # print(lines[count])
+            if "mqttPort" in line:
+                # print("find port")
+                line = line.replace('mqttPort',str(config['mqttPort']))
+                lines[count] = line
+                # print(lines[count])
+            if "mqttAccount" in line:
+                # print("find account")
+                line = line.replace('mqttAccount',config['mqttAccount'])
+                lines[count] = line
+                # print(lines[count])
+            if "mqttPassword" in line:
+                # print("find password")
+                line = line.replace("mqttPassword",config['mqttPassword'])
+                lines[count] = line
+                # print(lines[count])
+            count+=1
+
+    with open('../../components/micropython/port/builtin_py/board_network.py','w') as f:
+        f.writelines(lines)
+
     print("build now")
     time_start = time.time()
     if not os.path.exists("build"):
@@ -167,6 +204,10 @@ elif project_args.cmd == "build" or project_args.cmd == "rebuild":
     print("time: {}".format(time.asctime(time.localtime())))
     print("build end, time last:%.2fs" %(time_end-time_start))
     print("==================================")
+    with open('../../../components/micropython/port/builtin_py/board_network_default.py','r') as f1:
+        lines = f1.readlines()
+        with open('../../../components/micropython/port/builtin_py/board_network.py','w') as f2:
+            f2.writelines(lines)
 # clean
 elif project_args.cmd == "clean":
     print("clean now")

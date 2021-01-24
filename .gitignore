@@ -67,3 +67,5 @@ lib_sipeed_kpu/
 components/nncase/
 
 !components/micropython/port/src/speech/maix_asr/libmaix_asr.a
+# config
+.config_default.json
