@@ -438,9 +438,9 @@ extern const struct _mp_obj_module_t mp_module_touchscreen;
 
 #define WebAI_K210_Major_Version "0"
 #define WebAI_K210_Minor_Version "1"
-#define WebAI_K210_Revision_Number "2"
-#define WebAI_K210_Build_Date "0112"
-#define WebAI_K210_Build_Number "01"
+#define WebAI_K210_Revision_Number "7"
+#define WebAI_K210_Build_Date "0226"
+#define WebAI_K210_Build_Number "03"
 
 #ifdef __linux__
 #define MICROPY_MIN_USE_STDOUT (1)
