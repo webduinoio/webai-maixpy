@@ -301,7 +301,7 @@ void load_config_from_spiffs(config_data_t *config)
 {
     s32_t ret, flash_error = 0;
     spiffs_file fd = SPIFFS_open(&spiffs_user_mount_handle.fs, FREQ_STORE_FILE_NAME, SPIFFS_O_RDONLY, 0);
-    // config init 
+    // config init
     config->freq_cpu = FREQ_CPU_DEFAULT;
     config->freq_pll1 = FREQ_PLL1_DEFAULT;
     config->kpu_div = 1;
@@ -453,13 +453,14 @@ int sd_preload(int core)
         // if (!mounted_flash || SPIFFS_stat(&spiffs_user_mount_handle.fs, "SKIPSD", &fno) != SPIFFS_OK)
         {
             mounted_sdcard = init_sdcard_fs();
-            for (int r = 0; r < 4; r++) 
+            for (int r = 0; r < 4; r++)
             {
                 if (!mounted_sdcard) mounted_sdcard = init_sdcard_fs(); // fail try again mounted_sdcard.
                 // msleep(50);
             }
         }
     }
+
     dual_func = NULL; // remove task
     maixpy_sdcard_loading = false;
     return 0;
@@ -481,8 +482,14 @@ void mp_task(void *pvParameter)
     if (!gc_heap)
     {
         printk("GC heap size too large\r\n");
-        while (1)
-            ;
+        void *gc_heap = malloc(128*1024); // 128KiB
+        if (!gc_heap)
+        {
+            printk("can't malloc 128k, check firmware size\r\n");
+            while(1){};
+        }else{
+            printk("GC size 128k\r\n");
+        }
     }
 #endif
 
@@ -625,6 +632,12 @@ soft_reset:
     // sysctl->soft_reset.soft_reset = 1;
 }
 
+void fpioa_clear()
+{
+    for (int index = 0; index < FPIOA_NUM_IO; index++)
+        fpioa_set_function_raw(index, FUNC_RESV0);
+}
+
 int maixpy_main()
 {
     uint8_t manuf_id, device_id;
@@ -632,6 +645,7 @@ int maixpy_main()
     sysctl_pll_set_freq(SYSCTL_PLL0, FREQ_PLL0_DEFAULT);
     sysctl_pll_set_freq(SYSCTL_PLL1, FREQ_PLL1_DEFAULT);
     sysctl_pll_set_freq(SYSCTL_PLL2, FREQ_PLL2_DEFAULT);
+    fpioa_clear();
     fpioa_set_function(4, FUNC_UARTHS_RX);
     fpioa_set_function(5, FUNC_UARTHS_TX);
     uarths_init();

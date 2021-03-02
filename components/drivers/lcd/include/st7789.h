@@ -84,6 +84,7 @@
 #define DIGITAL_GAMMA_CTL2      0xE3
 #define INTERFACE_CTL           0xF6
 
+#include "gpiohs.h"
 #define DCX_GPIONUM             (22) // 31
 #define RST_GPIONUM             (23) // 30
 

@@ -349,8 +349,8 @@ except Exception as e:
 # detect boot.py
 main_py = '''
 try:
-    import gc, lcd, image
-    # gc.collect()
+    import gc, lcd, image, sys
+    gc.collect()
     lcd.init()
     lcd.draw_string(0,0,'test',lcd.WHITE,lcd.BLACK)
     loading = image.Image(size=(lcd.width(), lcd.height()))
