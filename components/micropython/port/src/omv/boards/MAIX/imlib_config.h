@@ -19,6 +19,8 @@
 #endif
 
 #define OMV_MINIMUM
+#define IMLIB_ENABLE_QRCODES
+
 
 /////////////////////////////////////////////////////////////////////////
 #else //CONFIG_MAIXPY_OMV_MINIMUM
