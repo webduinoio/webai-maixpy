@@ -122,6 +122,15 @@ menu "Micropython configurations"
 		config MAIXPY_BUILTIN_PY_BOARD_KPU
 			bool "Enable builtin py module board_kpu"
 			default y
+		config MAIXPY_BUILTIN_PY_QRCODE_EXEC
+			bool "Enable builtin py module qrcode_exec"
+			default y
+		config MAIXPY_BUILTIN_PY_UREQUESTS
+			bool "Enable builtin py module urequests"
+			default n
+		config MAIXPY_BUILTIN_PY_MICROWEBCLI
+			bool "Enable builtin py module microWebCli"
+			default n
 	endmenu
 
 	menu "Debug configurations"
