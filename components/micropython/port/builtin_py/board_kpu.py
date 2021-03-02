@@ -1,13 +1,12 @@
-import time,lcd,sensor,image,gc,sys,json
+import time,lcd,sensor,image,gc,sys,json,uos
 import KPU as kpu
-
 class ObjectTracking_Blockly():
     def showMessage(self,msg):
         print(msg)
         lcd.clear()
         lcd.draw_string(int(311-len(msg)*6.9)//2,224//2,msg,lcd.WHITE)
         
-    def __init__(self,flip=0,modelPath=None,threshold=0.1,nms_value=0.1,w=320,h=224):
+    def __init__(self,flip=0,classes=[],cwd=None,model=None,threshold=0.1,nms_value=0.1,w=320,h=224):
         try:
             lcd.init()    
             self.showMessage("init camera")
@@ -28,12 +27,16 @@ class ObjectTracking_Blockly():
             sys.exit()
             
         try:
-            modelPathStart=modelPath.find('(')
-            modelPathEnd=modelPath.rfind(')')
-            classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
+            # modelPathStart=modelPath.find('(')
+            # modelPathEnd=modelPath.rfind(')')
+            # classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
+            if cwd=="flash":
+                model=0x780000
+            else:
+                model="/sd/"+model+".kmodel"
             self.classes=classes
             self.showMessage("load model")
-            self.task = kpu.load(modelPath)
+            self.task = kpu.load(model)
             self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
             kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
             self.showMessage("init finish")
@@ -53,9 +56,9 @@ class ObjectTracking_Blockly():
                     respList={"x":i.x(),"y":i.y(),"w":i.w(),"h":i.h(),"value":i.value(),"classid":i.classid(),"index":i.index(),"objnum":i.objnum(),"objname":self.classes[i.classid()]}
                     self.classesArr.append(respList)
                     # print(self.classesArr)
-                    for i in code:
-                        lcd.draw_string(i.x(), i.y(), self.classes[i.classid()], lcd.RED, lcd.WHITE)
-                        lcd.draw_string(i.x(), i.y()+12, '%.3f'%i.value(), lcd.RED, lcd.WHITE)
+                    # for i in code:
+                    #     lcd.draw_string(i.x(), i.y(), self.classes[i.classid()], lcd.RED, lcd.WHITE)
+                    #     lcd.draw_string(i.x(), i.y()+12, '%.3f'%i.value(), lcd.RED, lcd.WHITE)
                 return True
             else:
                 lcd.display(img)
@@ -80,14 +83,14 @@ class ImageClassification_Blockly():
         lcd.clear()
         lcd.draw_string(int(311-len(msg)*6.9)//2,224//2,msg,lcd.WHITE)
         
-    def __init__(self,flip=0,modelPath=None,threshold=0.1,nms_value=0.1):
+    def __init__(self,flip=0,cwd=None,classes=[],model=None,threshold=0.1,nms_value=0.1):
         try:
             lcd.init()    
             self.showMessage("init camera")
             sensor.reset()
             sensor.set_pixformat(sensor.RGB565)
             sensor.set_framesize(sensor.QVGA)
-            sensor.set_windowing((320, 224))    
+            sensor.set_windowing((224, 224))    
             sensor.set_vflip(flip)
             sensor.set_auto_gain(1)
             sensor.set_auto_whitebal(1)
@@ -101,44 +104,69 @@ class ImageClassification_Blockly():
             sys.exit()
             
         try:
-            modelPathStart=modelPath.find('(')
-            modelPathEnd=modelPath.rfind(')')
-            classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
+            # modelPathStart=modelPath.find('(')
+            # modelPathEnd=modelPath.rfind(')')
+            # classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
+            if cwd=="flash":
+                model=0x950000
+            else:
+                model="/sd/"+model+".kmodel"
             self.classes=classes
             self.showMessage("load model")
-            self.task = kpu.load(modelPath)
-            self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
-            kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
+            self.task = kpu.load(model)
             self.showMessage("init finish")
         except Exception as e:
             print(e)
             self.showMessage("load model error")            
             sys.exit()
-    def checkClasses(self):
+    def checkClass(self):
         try:
             self.classesArr=[]
-            img = sensor.snapshot()        
-            code = kpu.run_yolo2(self.task, img)
-            img=img.resize(224,224)
-            if code:
-                for i in code:
-                    lcd.display(img)
-                    respList={"x":i.x(),"y":i.y(),"w":i.w(),"h":i.h(),"value":i.value(),"classid":i.classid(),"index":i.index(),"objnum":i.objnum(),"objname":self.classes[i.classid()]}
-                    self.classesArr.append(respList)
-                    lcd.draw_string(0, 100, self.classes[i.classid()],lcd.RED, lcd.WHITE)
-                    lcd.draw_string(0, 150, '%.3f'%i.value(),lcd.RED, lcd.WHITE)
-                # print(self.classesArr)
-                return True
-            else:
-                lcd.display(img)
-                return False
+            img = sensor.snapshot()
+            fmap = kpu.forward(self.task, img)
+            plist=fmap[:]
+            pmax=max(plist)
+            #print(pmax)
+            max_index=plist.index(pmax)
+            #lcd.display(img, oft=(0,0))
+            lcd.display(img)
+            #lcd.draw_string(0, 100, "%.2f:%s "%(pmax, labels[max_index].strip()))
+            objname=self.classes[max_index].strip()
+            print(objname)
+            # lcd.draw_string(0, 100, "%s "%objname,lcd.RED, lcd.WHITE)
+            # lcd.draw_string(0, 150, "%.2f"%pmax,lcd.RED, lcd.WHITE)
+            respList={"x":0,"y":0,"w":0,"h":0,"value":"%.2f"%pmax,"classid":max_index,"index":0,"objnum":0,"objname":objname}
+            self.classesArr.append(respList)
+            return True
         except Exception as e:
             print(e)
-    def getClasses(self):
+            self.classesArr=[]
+            return False
+        # try:
+        #     self.classesArr=[]
+        #     img = sensor.snapshot()        
+        #     code = kpu.run_yolo2(self.task, img)
+        #     img=img.resize(224,224)
+        #     if code:
+        #         for i in code:
+        #             lcd.display(img)
+        #             respList={"x":i.x(),"y":i.y(),"w":i.w(),"h":i.h(),"value":i.value(),"classid":i.classid(),"index":i.index(),"objnum":i.objnum(),"objname":self.classes[i.classid()]}
+        #             self.classesArr.append(respList)
+        #             # lcd.draw_string(0, 100, self.classes[i.classid()],lcd.RED, lcd.WHITE)
+        #             # lcd.draw_string(0, 150, '%.3f'%i.value(),lcd.RED, lcd.WHITE)
+        #         # print(self.classesArr)
+        #         return True
+        #     else:
+        #         lcd.display(img)
+        #         return False
+        # except Exception as e:
+        #     print(e)
+
+    def getClass(self):
         #print(self.classesArr)
         if(len(self.classesArr)>0):
             self.classesArr.sort(key = lambda s: s['value'])
-            #print(self.classesArr)            
+            #print(self.classesArr)
             return self.classesArr[len(self.classesArr)-1]
         else:
             return []

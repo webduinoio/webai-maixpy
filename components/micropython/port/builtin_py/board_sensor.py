@@ -1,21 +1,36 @@
 import gc,time
-from board import board_info
+import lcd
+from fpioa_manager import fm
+from board import board_info,fpioaMapGPIO
+from machine import UART
 class Lcd_Blockly:
-    import lcd
     def __init__(self):
+        import image
+        self.lcd=lcd
+        self.image=image
         self.lcd.init()
         self.lcd.clear()
+        self.img=self.image.Image()
         print('Lcd_Blockly __init__')
     def __del__(self):
         del self
         print('Lcd_Blockly __del__')
     def clear(self):
         self.lcd.clear()
+        self.img.clear()
     def draw_string(self,x,y,msg,strColor,bgColor):
         if not msg == '':
-            self.lcd.draw_string(x,y,msg,strColor,bgColor)
-    def displayImg(self,img):
-        self.lcd.display(img)
+            self.lcd.draw_string(x,y,str(msg),strColor,bgColor)
+    def displayImg(self,cwd=None,img=None):
+        if type(img)==str:
+            if cwd=="flash":
+                self.path="/flash/"+img
+            else:
+                self.path="/sd/"+img
+            self.img=self.image.Image(self.path)
+            self.lcd.display(self.img)
+        else:
+            self.lcd.display(img)
     def displayColor(self,color):
         self.lcd.clear(color)
     def selfObject(self):
@@ -24,21 +39,47 @@ class Lcd_Blockly:
         return self.lcd.width()
     def height(self):
         return self.lcd.height()
+    def drawCircle(self,x,y,radius,color=0xffffff,thickness=1,fill=False):
+        self.img.draw_circle(x,y,radius,color,thickness,fill)
+        self.lcd.display(self.img)
+    def drawLine(self,x0,y0,x1,y1,color=0xffffff,thickness=1):
+        self.img.draw_line(x0,y0,x1,y1,color,thickness)
+        self.lcd.display(self.img)
+    def drawRectangle(self,x,y,w,h,color=0xffffff,thickness=1,fill=False):
+        self.img.draw_rectangle(x,y,w,h,color,thickness,fill)
+        self.lcd.display(self.img)
+    def drawArrow(self,x0,y0,x1,y1,color=0xffffff,thickness=1):
+        self.img.draw_arrow(x0,y0,x1,y1,color,thickness)
+        self.lcd.display(self.img)
+    def drawCross(self,x,y,color=0xffffff,size=5,thickness=1):
+        self.img.draw_cross(x,y,color,size,thickness)
+        self.lcd.display(self.img)
+    def drawString(self,x,y,text,color=0xffffff,scale=5,x_spacing=3,y_spacing=1,mono_space=False):
+        if not text == '':
+            self.img.draw_string(x,y,text,color,scale,x_spacing,y_spacing,mono_space)
+            self.lcd.display(self.img)
         
 class Camera_Blockly:
     import sensor
     def __init__(self,flip=1,auto_gain=1,auto_whitebal=1,auto_exposure=1,brightness=3):
         #self.sensor=sensor
-        self.sensor.reset()
-        self.sensor.set_pixformat(self.sensor.RGB565)
-        self.sensor.set_framesize(self.sensor.QVGA)
-        self.sensor.skip_frames(time = 2000)
-        self.sensor.set_vflip(flip)
-        self.sensor.set_auto_gain(auto_gain)
-        self.sensor.set_auto_whitebal(auto_whitebal)
-        self.sensor.set_auto_exposure(auto_exposure)
-        self.sensor.set_brightness(brightness)
-        print('Camera_Blockly __init__')
+        try:
+            showMessage("init camera")
+            self.sensor.reset()
+            self.sensor.set_pixformat(self.sensor.RGB565)
+            self.sensor.set_framesize(self.sensor.QVGA)
+            self.sensor.skip_frames(time = 2000)
+            self.sensor.set_vflip(flip)
+            self.sensor.set_auto_gain(auto_gain)
+            self.sensor.set_auto_whitebal(auto_whitebal)
+            self.sensor.set_auto_exposure(auto_exposure)
+            self.sensor.set_brightness(brightness)
+            print('Camera_Blockly __init__')
+            showMessage("init camera OK")
+        except Exception as e:
+            print(e)
+            showMessage("init camera ERROR")
+
     def shutdown(self,enable):
         self.sensor.shutdown(enable)
     def snapshot(self):
@@ -71,7 +112,12 @@ class Mic_Blockly:
     rx.channel_config(rx.CHANNEL_0, rx.RECEIVER, align_mode=I2S.STANDARD_MODE)
     rx.set_sample_rate(sample_rate)
 
-    def start(self,folder="sd",fileName="recorder",record_time=5):
+    def start(self,cwd=None,folder="sd",fileName="recorder",record_time=5):
+        if cwd=="flash":
+            folder="flash"
+            record_time=1
+        else:
+            folder="sd"
         self.recorder = self.audio.Audio(path="/"+folder+"/"+fileName+".wav", is_create=True, samplerate=self.sample_rate)
         self.queue = []
         print("start recorder")
@@ -97,9 +143,14 @@ class Speaker_Blockly:
     from fpioa_manager import fm
     import audio
     # from machine import UART
-    sample_rate = 48000
+    # sample_rate = 48000
     #sample_rate = 44100
-    #uart = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
+
+
+
+    sample_rate = 22000
+
+    #SYSTEM_AT_UART = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
     #fm.register(27, fm.fpioa.UART2_TX, force=True)
     #fm.register(28, fm.fpioa.UART2_RX, force=True)
 
@@ -112,20 +163,24 @@ class Speaker_Blockly:
     wav_dev.channel_config(wav_dev.CHANNEL_1, I2S.TRANSMITTER,resolution = I2S.RESOLUTION_16_BIT ,cycles = I2S.SCLK_CYCLES_32, align_mode = I2S.RIGHT_JUSTIFYING_MODE)
     wav_dev.set_sample_rate(sample_rate)
     #def commCycle(self,command): #This controls one command exection cycle.
-        #self.uart.write(command + '\r\n')
+        #self.SYSTEM_AT_UART.write(command + '\r\n')
         #myLine = ''
         #while  not  "OK" in myLine:
-            #while not self.uart.any():
+            #while not self.SYSTEM_AT_UART.any():
                 #pass
-            #myLine = self.uart.readline()
+            #myLine = self.SYSTEM_AT_UART.readline()
             #print(myLine)
     def __init__(self):
         print("SPEAKER __init__")
     def __del__(self):
         del self
         print("SPEAKER __del__")
-    def start(self,folder="sd",fileName=None,volume=2):
+    def start(self,SYSTEM_AT_UART,cwd=None,folder="sd",fileName=None,volume=2):
         if(fileName!=None):
+            if cwd=="flash":
+                folder="flash"
+            else:
+                folder="sd"
             player = self.audio.Audio(path = "/"+folder+"/"+fileName+".wav")
             player.volume(volume)
             # read audio info
@@ -133,8 +188,8 @@ class Speaker_Blockly:
             #print("wav file head information: ", wav_info)
             player.play_process(self.wav_dev)
             print("start play")
-            #self.commCycle("AT+SPEAKER=1")
-            commCycle("AT+SPEAKER=1")
+            #self.commCycle(self.SYSTEM_AT_UART,"AT+SPEAKER=1")
+            commCycle(SYSTEM_AT_UART,"AT+SPEAKER=1")
 
             while True:
                ret = player.play()
@@ -145,52 +200,70 @@ class Speaker_Blockly:
                    print("end")
                    break
 
-            #self.commCycle("AT+SPEAKER=0")
-            commCycle("AT+SPEAKER=0")
+            #self.commCycle(SYSTEM_AT_UART,"AT+SPEAKER=0")
+            commCycle(SYSTEM_AT_UART,"AT+SPEAKER=0")
             player.finish()
             #print(time.time())
             print("play finish")
         else:
             print("fileName error")
 
-from fpioa_manager import fm
-from machine import UART
-def commCycle(command,timeout=5000): #This controls one command exection cycle.
-    uart.write(command + '\r\n')
+# def showMessage(msg):
+#     lcd.clear()
+#     lcd.draw_string(int(311-len(msg)*6.9)//2,224//2,msg,lcd.WHITE)
+
+def commCycle(SYSTEM_AT_UART,command,timeout=5000): #This controls one command exection cycle.
+    SYSTEM_AT_UART.write(command + '\r\n')
     myLine = ''
     # while  not  "OK" in myLine:
-    #     while not uart.any():
+    #     while not SYSTEM_AT_UART.any():
     #         pass
-    #     myLine = uart.readline()
+    #     myLine = SYSTEM_AT_UART.readline()
     #     print(myLine)
 
 
     startTime=time.ticks_ms()
     ifdata=True
-    while  not  "OK" in myLine:
-        while not uart.any():
-            endTime=time.ticks_ms()
-            # print(end-start)
-            if((endTime-startTime)>=timeout):
-                ifdata=False
-                break
-        if(ifdata):
-            myLine = uart.readline()
-            print(myLine)
-        else:
-            print("timeout")
-            raise Exception('timeout')
-            # break
+    try:
+        while  not  "OK" in myLine:
+            while not SYSTEM_AT_UART.any():
+                endTime=time.ticks_ms()
+                # print(endTime-startTime)
+                if((endTime-startTime)>=timeout):
+                    ifdata=False
+                    break
+            if(ifdata):
+                myLine = SYSTEM_AT_UART.readline()
+                print(myLine)
+                if "ERROR" in myLine:
+                    # print("ERROR")
+                    # raise Exception('ERROR')
+                    return "ERROR"
+                elif "busy s" in myLine:
+                    # print("busy sending")
+                    # raise Exception('busy sending')
+                    return "busy sending"
+                elif "busy p" in myLine:
+                    # print("busy processing")
+                    # raise Exception('busy processing')
+                    return "busy processing"
+            else:
+                print("timeout")
+                # raise Exception('timeout')
+                return "timeout"
+                # break
+        return "OK"
+    except Exception as e:
+        print(e)
 
-
-def readUID(timeout=2000): #This controls one command exection cycle.
-    # uart.write('AT+SYSUID' + '\r\n')
+def readUID(SYSTEM_AT_UART,timeout=2000): #This controls one command exection cycle.
+    # SYSTEM_AT_UART.write('AT+SYSUID' + '\r\n')
     # myLine = ''
     # respUID = ''
     # while  not  "OK" in myLine:
-    #     while not uart.any():
+    #     while not SYSTEM_AT_UART.any():
     #         pass
-    #     myLine = uart.readline()
+    #     myLine = SYSTEM_AT_UART.readline()
     #     print(myLine)
     #     if "unique id" in myLine:
     #         myLine=myLine.strip().decode()
@@ -198,36 +271,62 @@ def readUID(timeout=2000): #This controls one command exection cycle.
     #         respUID=myLine[10:]
     # return respUID
 
-
     myLine = ''
     respUID = ''
     startTime=time.ticks_ms()
     ifdata=True
-    uart.write('AT+SYSUID' + '\r\n')
-    while  not  "OK" in myLine:
-        while not uart.any():
-            endTime=time.ticks_ms()
-            # print(end-start)
-            if((endTime-startTime)>=timeout):
-                ifdata=False
-                break
-        if(ifdata):
-            myLine = uart.readline()
-            print(myLine)
-            if "unique id" in myLine:
-                myLine=myLine.strip().decode()
-                #print(myLine[10:])
-                respUID=myLine[10:]
-
+    SYSTEM_AT_UART.write('AT+SYSUID' + '\r\n')
+    try:
+        while  not  "OK" in myLine:
+            while not SYSTEM_AT_UART.any():
+                endTime=time.ticks_ms()
+                # print(end-start)
+                if((endTime-startTime)>=timeout):
+                    ifdata=False
+                    break
+            if(ifdata):
+                myLine = SYSTEM_AT_UART.readline()
+                print(myLine)
+                if "unique id" in myLine:
+                    myLine=myLine.strip().decode()
+                    #print(myLine[10:])
+                    respUID=myLine[10:]
+                elif "ERROR" in myLine:
+                    # print("ERROR")
+                    # raise Exception('ERROR')
+                    return "ERROR"
+                elif "busy s" in myLine:
+                    # print("busy sending")
+                    # raise Exception('busy sending')
+                    return "busy sending"
+                elif "busy p" in myLine:
+                    # print("busy processing")
+                    # raise Exception('busy processing')
+                    return "busy processing"
+            else:
+                print("timeout")
+                # raise Exception('timeout')
+                return "timeout"
+                # break
+        return respUID
+    except Exception as e:
+        print(e)
+        return "ERROR"
+def showMessage(msg,x=-1,y=0,center=True,clear=False):
+    if clear:
+        lcd.clear()
+    if center:
+        lcd.draw_string(int(320-len(msg)*8)//2,112,msg,lcd.WHITE)
+    else:
+        if x == -1:
+            lcd.draw_string(int(320-len(msg)*8)//2,int(224/7*y),msg,lcd.WHITE)
         else:
-            print("timeout")
-            raise Exception('timeout')
-            # break
-    return respUID
+            lcd.draw_string(x,int(224/7*y),msg,lcd.WHITE)
 
-fm.register(board_info.ESP_UART0RX, fm.fpioa.UART2_TX, force=True)
-fm.register(board_info.ESP_UART0TX, fm.fpioa.UART2_RX, force=True)
+lcd.init()
+# fm.register(board_info.ESP_UART0RX, fm.fpioa.UART2_TX, force=True)
+# fm.register(board_info.ESP_UART0TX, fm.fpioa.UART2_RX, force=True)
 
-#uart = UART(UART.UART2, 115200*5, 8, 2, 2, timeout=5000, read_buf_len=40960)
-uart = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
+# #SYSTEM_AT_UART = UART(UART.UART2, 115200*5, 8, 2, 2, timeout=5000, read_buf_len=40960)
+# SYSTEM_AT_UART = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
 print("load board_sensor finish")
