@@ -215,10 +215,43 @@ int uart_rx_irq(void *ctx)
 					break;
 				}
 			}while(read_ret!=EOF);
+			// read_ret
+			// mp_printf(&mp_plat_print, "[MAIXPY]UART%d\r\n",read_ret);
 		}
 	}
+	
+	// uint8_t ubuf[64] = {0};
+	// ubuf[0]=read_tmp;
+	// mp_printf(&mp_plat_print, "%x,",ubuf[0]);
+
+	// for(int i=0;i<ctx_self->data_len;i++){
+	// 	mp_printf(&mp_plat_print, "%x",ctx_self->read_buf[i]);
+	// }
+	// mp_printf(&mp_plat_print, ",end\n");
+	// mp_printf(&mp_plat_print, "[MAIXPY]MICROPY_PY_THREAD\r\n");
+
 #if MICROPY_PY_THREAD
-	mp_hal_wake_main_task_from_isr();
+
+//    mp_call_function_2(handler, MP_OBJ_FROM_PTR(self), mp_obj_new_int_from_uint(self->id));
+//    mp_sched_schedule(ctx_self->callback, MP_OBJ_FROM_PTR(ctx_self));
+	// mp_hal_wake_main_task_from_isr();
+
+
+   //only gpiohs support irq,so only support gpiohs in this func
+//    mp_obj_t handler = ctx_self->callback;
+// //    mp_call_function_2(handler, MP_OBJ_FROM_PTR(self), mp_obj_new_int_from_uint(self->id));
+// 	if (handler == mp_const_none) {
+// 		handler = MP_OBJ_NULL;
+// 	}else{
+//    		mp_sched_schedule(handler, MP_OBJ_FROM_PTR(ctx_self));
+// 	}
+   mp_hal_wake_main_task_from_isr();
+
+
+
+	// mp_printf(&mp_plat_print, "[MAIXPY]UART callback\r\n");
+
+	
 #endif
 	return 0;
 }
@@ -407,7 +440,8 @@ STATIC void machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, co
 		   ARG_timeout_char,
 		   ARG_read_buf_len,
 		   ARG_ide,
-		   ARG_from_ide}; // uart communicate with IDE
+		   ARG_from_ide,
+		   ARG_callback}; // uart communicate with IDE
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = 115200} },
         { MP_QSTR_bits, MP_ARG_INT, {.u_int = UART_BITWIDTH_8BIT} },
@@ -417,7 +451,8 @@ STATIC void machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, co
         { MP_QSTR_timeout_char, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 10} },
         { MP_QSTR_read_buf_len, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = MAIX_UART_BUF} },
 		{ MP_QSTR_ide, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
-		{ MP_QSTR_from_ide, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = true} },
+		{ MP_QSTR_from_ide, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = true} }, 
+		{ MP_QSTR_callback, MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -521,6 +556,11 @@ STATIC void machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, co
 	{
 		self->ide_debug_mode = false;
 	}
+	// mp_obj_t handler = args[ARG_callback].u_obj;
+	// if (handler == mp_const_none) {
+	// 	handler = MP_OBJ_NULL;
+	// }
+	self->callback = args[ARG_callback].u_obj;
 }
 
 STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {

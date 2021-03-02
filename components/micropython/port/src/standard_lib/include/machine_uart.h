@@ -23,6 +23,7 @@ typedef struct _machine_uart_obj_t {
 	uint16_t timeout_char;
 	uint16_t data_len;
     uint8_t *read_buf;
+    mp_obj_t   callback;
 } machine_uart_obj_t;
 
 void uart_attach_to_repl(machine_uart_obj_t *self, bool attached);
