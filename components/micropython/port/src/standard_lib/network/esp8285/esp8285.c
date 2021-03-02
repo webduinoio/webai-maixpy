@@ -1355,12 +1355,12 @@ bool qATCWJAP_CUR(esp8285_obj* nic)
 bool eINIT(esp8285_obj* nic)
 {
 	bool init_flag = 1;
-	init_flag = init_flag && eAT(nic);
+	// init_flag = init_flag && eAT(nic);
 	init_flag = init_flag && eATE(nic,1);
-	init_flag = init_flag && sATCIPMODE(nic,0);
-	init_flag = init_flag && setOprToStation(nic);
-	init_flag = init_flag && disableMUX(nic);
-	init_flag = init_flag && leaveAP(nic);
+	// init_flag = init_flag && sATCIPMODE(nic,0);
+	// init_flag = init_flag && setOprToStation(nic);
+	// init_flag = init_flag && disableMUX(nic);
+	// init_flag = init_flag && leaveAP(nic);
 	return init_flag;
 }
 
