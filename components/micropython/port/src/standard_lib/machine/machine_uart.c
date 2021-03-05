@@ -78,6 +78,8 @@ STATIC const char *_parity_name[] = {"None", "odd", "even"};
 STATIC const char *_stop_name[] = {"1", "1.5", "2"};
 Buffer_t g_uart_send_buf_ide;
 
+static mp_obj_t globalCallback;
+
 //QueueHandle_t UART_QUEUE[UART_DEVICE_MAX] = {};
 
 /******************************************************************************/
@@ -239,12 +241,13 @@ int uart_rx_irq(void *ctx)
 
    //only gpiohs support irq,so only support gpiohs in this func
 //    mp_obj_t handler = ctx_self->callback;
-// //    mp_call_function_2(handler, MP_OBJ_FROM_PTR(self), mp_obj_new_int_from_uint(self->id));
-// 	if (handler == mp_const_none) {
-// 		handler = MP_OBJ_NULL;
-// 	}else{
-//    		mp_sched_schedule(handler, MP_OBJ_FROM_PTR(ctx_self));
-// 	}
+	mp_obj_t handler = globalCallback;
+//    mp_call_function_2(handler, MP_OBJ_FROM_PTR(self), mp_obj_new_int_from_uint(self->id));
+	if (handler == mp_const_none) {
+		handler = MP_OBJ_NULL;
+	}else{
+   		mp_sched_schedule(handler, MP_OBJ_FROM_PTR(ctx_self));
+	}
    mp_hal_wake_main_task_from_isr();
 
 
@@ -561,6 +564,7 @@ STATIC void machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, co
 	// 	handler = MP_OBJ_NULL;
 	// }
 	self->callback = args[ARG_callback].u_obj;
+	globalCallback = args[ARG_callback].u_obj;
 }
 
 STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
@@ -621,6 +625,21 @@ STATIC mp_obj_t machine_uart_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_uart_deinit_obj, machine_uart_deinit);
 
+STATIC mp_obj_t machine_uart_start(mp_obj_t self_in) {
+    machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
+	// self->active = true;
+	globalCallback = self->callback;
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_uart_start_obj, machine_uart_start);
+
+STATIC mp_obj_t machine_uart_stop(mp_obj_t self_in) {
+    machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
+	// self->active = false;
+	globalCallback = mp_const_none;
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_uart_stop_obj, machine_uart_stop);
 
 STATIC mp_obj_t machine_set_uart_repl_uart(mp_obj_t arg) {
 	if(g_repl_uart_obj)
@@ -637,6 +656,8 @@ MP_DEFINE_CONST_FUN_OBJ_1(machine_set_uart_repl_uart_obj, machine_set_uart_repl_
 STATIC const mp_rom_map_elem_t machine_uart_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_uart_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&machine_uart_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_start), MP_ROM_PTR(&machine_uart_start_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stop), MP_ROM_PTR(&machine_uart_stop_obj) },
 
 	{ MP_ROM_QSTR(MP_QSTR_readchar), MP_ROM_PTR(&machine_uart_rx_char_obj)},
 	{ MP_ROM_QSTR(MP_QSTR_any), MP_ROM_PTR(&machine_uart_any_obj)},
