@@ -568,11 +568,22 @@ soft_reset:
     int ret = pyexec_frozen_module("_boot.py");
     if (ret != 0 && !is_ide_dbg_mode()) // user canceled or ide mode
     {
+        mp_printf(&mp_plat_print, "ide mode:false\r\n"); // for maixpy ide
         ret = pyexec_file_if_exists("boot.py");
+        mp_printf(&mp_plat_print, "exe boot:%d\r\n",ret); // for maixpy ide
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL)
         {
             ret = pyexec_file_if_exists("main.py");
+            mp_printf(&mp_plat_print, "exe main:%d\r\n",ret); // for maixpy ide
         }
+    }else{
+        mp_printf(&mp_plat_print, "ide mode:true\r\n"); // for maixpy ide
+        // ret = pyexec_file_if_exists("boot.py");
+        // mp_printf(&mp_plat_print, "exe boot:%d\r\n",ret); // for maixpy ide
+        // if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL)
+        // {
+
+        // }
     }
     do
     {
@@ -640,6 +651,12 @@ void fpioa_clear()
 
 int maixpy_main()
 {
+    fpioa_set_function(20, FUNC_GPIO0);
+    gpio_init();
+    gpio_set_drive_mode(0, GPIO_DM_OUTPUT);
+    gpio_set_pin(0, GPIO_PV_LOW);
+    msleep(10);
+    gpio_set_pin(0, GPIO_PV_HIGH);
     uint8_t manuf_id, device_id;
     config_data_t config;
     sysctl_pll_set_freq(SYSCTL_PLL0, FREQ_PLL0_DEFAULT);
@@ -679,7 +696,7 @@ int maixpy_main()
     /* open core 1 */
     // printk("open second core...\r\n");
     register_core1(core1_function, 0);
-
+    msleep(1000);
 #if MICROPY_PY_THREAD
     xTaskCreateAtProcessor(0,                     // processor
                            mp_task,               // function entry
