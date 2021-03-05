@@ -139,50 +139,32 @@ class Mic_Blockly:
 
 
 class Speaker_Blockly:
-    from Maix import I2S
-    from fpioa_manager import fm
-    import audio
-    # from machine import UART
-    # sample_rate = 48000
-    #sample_rate = 44100
-
-
-
-    sample_rate = 22000
-
-    #SYSTEM_AT_UART = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
-    #fm.register(27, fm.fpioa.UART2_TX, force=True)
-    #fm.register(28, fm.fpioa.UART2_RX, force=True)
-
-    # register i2s(i2s2) pin
-    fm.register(board_info.SPK_I2S_OUT,fm.fpioa.I2S2_OUT_D1, force=True)
-    fm.register(board_info.SPK_I2S_WS,fm.fpioa.I2S2_WS, force=True)
-    fm.register(board_info.SPK_I2S_SCLK,fm.fpioa.I2S2_SCLK, force=True)
-    ##init audio
-    wav_dev = I2S(I2S.DEVICE_2)
-    wav_dev.channel_config(wav_dev.CHANNEL_1, I2S.TRANSMITTER,resolution = I2S.RESOLUTION_16_BIT ,cycles = I2S.SCLK_CYCLES_32, align_mode = I2S.RIGHT_JUSTIFYING_MODE)
-    wav_dev.set_sample_rate(sample_rate)
-    #def commCycle(self,command): #This controls one command exection cycle.
-        #self.SYSTEM_AT_UART.write(command + '\r\n')
-        #myLine = ''
-        #while  not  "OK" in myLine:
-            #while not self.SYSTEM_AT_UART.any():
-                #pass
-            #myLine = self.SYSTEM_AT_UART.readline()
-            #print(myLine)
     def __init__(self):
+        from Maix import I2S
+        from fpioa_manager import fm
+        import audio
+        fm.register(board_info.SPK_I2S_OUT,fm.fpioa.I2S2_OUT_D1, force=True)
+        fm.register(board_info.SPK_I2S_WS,fm.fpioa.I2S2_WS, force=True)
+        fm.register(board_info.SPK_I2S_SCLK,fm.fpioa.I2S2_SCLK, force=True)
+        self.wav_dev = I2S(I2S.DEVICE_2)
+        self.wav_dev.channel_config(self.wav_dev.CHANNEL_1, I2S.TRANSMITTER,resolution = I2S.RESOLUTION_16_BIT ,cycles = I2S.SCLK_CYCLES_32, align_mode = I2S.RIGHT_JUSTIFYING_MODE)
+        self.audio=audio
+        self.volume=5
         print("SPEAKER __init__")
     def __del__(self):
         del self
         print("SPEAKER __del__")
-    def start(self,SYSTEM_AT_UART,cwd=None,folder="sd",fileName=None,volume=2):
+    def setVolume(self,volume):
+        self.volume=volume
+    def start(self,SYSTEM_AT_UART,cwd=None,folder="sd",fileName=None,sample_rate=48000):
         if(fileName!=None):
             if cwd=="flash":
                 folder="flash"
             else:
                 folder="sd"
+            self.wav_dev.set_sample_rate(sample_rate)
             player = self.audio.Audio(path = "/"+folder+"/"+fileName+".wav")
-            player.volume(volume)
+            player.volume(self.volume)
             # read audio info
             #wav_info = player.play_process(wav_dev)
             #print("wav file head information: ", wav_info)
