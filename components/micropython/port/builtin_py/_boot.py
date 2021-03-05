@@ -144,7 +144,7 @@ try:
     from board import board_info
     import time,network,ujson,lcd
     from machine import Timer
-    from Maix import GPIO
+    # from Maix import GPIO
     from fpioa_manager import fm
     from board_sensor import showMessage
     print(globals())
@@ -155,23 +155,20 @@ try:
         wifiCheckCount-=1
         print(wifiCheckCount)
     tim = Timer(Timer.TIMER0, Timer.CHANNEL0, mode=Timer.MODE_PERIODIC, period=1, unit=Timer.UNIT_S, callback=timerCount, arg=timerCount, start=False, priority=1, div=0)
-    pinA=7#A
-    fm.fpioa.set_function(pinA,fm.fpioa.GPIO7)
-    gpioA=GPIO(GPIO.GPIO7,GPIO.IN)
-    pinB=16#B
-    fm.fpioa.set_function(pinB,fm.fpioa.GPIO6)
-    gpioB=GPIO(GPIO.GPIO6,GPIO.IN)
+    # pinA=7#A
+    # fm.fpioa.set_function(pinA,fm.fpioa.GPIO7)
+    # SYSTEM_BTN_L=GPIO(GPIO.GPIO7,GPIO.IN)
+    # pinB=16#B
+    # fm.fpioa.set_function(pinB,fm.fpioa.GPIO6)
+    # SYSTEM_BTN_R=GPIO(GPIO.GPIO6,GPIO.IN)
     lcd.clear()
     K210_VERSION=os.uname()
     showMessage("k210 ver:"+K210_VERSION[5],x=-1,y=5,center=False,clear=False)
     del K210_VERSION
     showMessage("deviceID:"+SYSTEM_ESP_DEVICE_ID,x=-1,y=1,center=False,clear=False)
     showMessage("WiFi checking...",x=-1,y=4,center=False,clear=False)
-    WIFI_SSID = "webduino.io"
-    WIFI_PASW = "webduino"
     WIFI_SSID = ""
     WIFI_PASW = ""
-
     setWiFiFlag=False
     try:
         with open('/flash/wifi.json','r') as f:
@@ -187,23 +184,29 @@ try:
         print("not setting wifi")
 
     showMessage("ssid: "+WIFI_SSID,x=-1,y=2.5,center=False,clear=False)
-    time.sleep(1)
+    # time.sleep(1)
     err = 0
     wifiStatus=""
     SYSTEM_WLAN = network.ESP8285(SYSTEM_AT_UART)
-    #SYSTEM_WiFiInfo=["","","",WIFI_SSID,"","",""]
-    SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
-    print(SYSTEM_WiFiInfo)
-
+    # SYSTEM_WiFiInfo=["","","",WIFI_SSID,"","",""]
+    # SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
+    # print(SYSTEM_WiFiInfo)
+    # time.sleep(0.5)
     if setWiFiFlag:
-        #SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
+        SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
+        # time.sleep(0.5)
         if SYSTEM_WiFiInfo[0]=="0.0.0.0" or SYSTEM_WiFiInfo[3]!=WIFI_SSID:
             while 1:
                 try:
-                    SYSTEM_WLAN.connect(WIFI_SSID, WIFI_PASW)
+                    print("connect")
+                    SYSTEM_WLAN.connect(WIFI_SSID, WIFI_PASW, False)
+                    # time.sleep(0.5)
+                    print("info")
                     SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
                     wifiStatus="OK"
-                except Exception:
+                    print("end")
+                except Exception as e:
+                    print(e)
                     err += 1
                     print("Connect AP failed, now try again")
                     wifiStatus="ERROR"
@@ -218,7 +221,6 @@ try:
 
     print(SYSTEM_WiFiInfo)
     if wifiStatus=="OK":
-        #SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
         showMessage(" "*40,x=-1,y=4,center=False,clear=False)
         showMessage("WiFi status:OK ("+SYSTEM_WiFiInfo[6]+" dBm)",x=-1,y=4,center=False,clear=False)
     else:
@@ -228,17 +230,15 @@ try:
     gc.collect()
     tim.start()
     qrcodeMode=False
-    #time.sleep(1)
-
     msg="press L Play                press R Scan"
     lcd.draw_string(0,224,msg,lcd.RED,lcd.BLACK)
     del msg
     while 1:
         if wifiCheckCount<0:
             break
-        if gpioA.value()==0:
+        if SYSTEM_BTN_L.value()==0:
             break
-        if gpioB.value()==0:
+        if SYSTEM_BTN_R.value()==0:
             qrcodeMode=True
             break
     del wifiCheckCount
@@ -246,14 +246,6 @@ try:
     tim.stop()
     tim.deinit()
     del tim
-    #with open('/flash/wifi.json','w') as f:
-        ##ujson.dump(, f)
-        #obj = '{"ssid":"%s","pwd":"%s"}'%("webduino.io","webduino")
-        ## jsDumps = ujson.dumps(obj)
-        ## print(jsDumps)
-        #f.write(obj)
-        ##f.flush()
-    #time.sleep(2)
     from qrcode_exec import function
     while qrcodeMode:
         import sensor
@@ -281,22 +273,14 @@ try:
                     print(qrcodeData)
                     #print(type(data['count']),data['count'])
                     if qrcodeData['function']=="wifi":
-                        #with open('/flash/wifi.json','w') as f:
-                            ##ujson.dump(, f)
-                            #obj = '{"ssid":"%s","pwd":"%s"}'%(qrcodeData['ssid'],qrcodeData['password'])
-                            ## jsDumps = ujson.dumps(obj)
-                            ## print(jsDumps)
-                            #f.write(obj)
-                            ##f.flush()
-                        #time.sleep(2)
                         showMessage("setting WiFi...",clear=True)
                         function.setWiFi(qrcodeData['ssid'],qrcodeData['password'])
                     elif qrcodeData['function']=="tackMobileNetPic":
                         showMessage("tack picture mode",clear=True)
-                        function.tackMobileNetPic(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,gpioA,gpioB,qrcodeData['dsname'],qrcodeData['count'],False,qrcodeData['url'],qrcodeData['hashKey'])
+                        function.tackMobileNetPic(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,SYSTEM_BTN_L,SYSTEM_BTN_R,qrcodeData['dsname'],qrcodeData['count'],False,qrcodeData['url'],qrcodeData['hashKey'])
                     elif qrcodeData['function']=="downloadModel":
                         showMessage("download model mode",clear=True)
-                        function.downloadModel(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,gpioA,gpioB,qrcodeData['fileName'],qrcodeData['modelType'],qrcodeData['url'])
+                        function.downloadModel(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,SYSTEM_BTN_L,SYSTEM_BTN_R,qrcodeData['fileName'],qrcodeData['modelType'],qrcodeData['url'])
                 #except KeyboardInterrupt as e:
                     #lcd.clear()
                     #print(e)
@@ -310,14 +294,14 @@ try:
                 #print(res[0].rect())
 
             lcd.display(img)
-            if gpioA.value()==0:
+            if SYSTEM_BTN_L.value()==0:
                 qrcodeMode=False
                 break
         del img,res,qrcodeData
 
     showMessage("",clear=True)
-    del pinA,pinB,gpioA,gpioB,qrcodeMode
-    del timerCount,ujson,function,Timer,network
+    # del pinA,pinB,SYSTEM_BTN_L,SYSTEM_BTN_R,qrcodeMode
+    del qrcodeMode,timerCount,ujson,function,Timer,network
     print("end")
     print(globals())
     gc.collect()
@@ -330,7 +314,6 @@ except KeyboardInterrupt as e:
         tim.deinit()
         del tim
     gc.collect()
-    #print(globals())
     sys.exit()
 except Exception as e:
     print(e)
@@ -339,7 +322,6 @@ except Exception as e:
         tim.deinit()
         del tim
     gc.collect()
-    #print(globals())
     sys.exit()
 '''
 
@@ -464,6 +446,14 @@ del banner
 SYSTEM_K210_VERSION=os.uname()
 from machine import UART
 from fpioa_manager import fm
+from Maix import GPIO
+pinA=7#A
+fm.fpioa.set_function(pinA,fm.fpioa.GPIO7)
+SYSTEM_BTN_L=GPIO(GPIO.GPIO7,GPIO.IN)
+pinB=16#B
+fm.fpioa.set_function(pinB,fm.fpioa.GPIO6)
+SYSTEM_BTN_R=GPIO(GPIO.GPIO6,GPIO.IN)
+del pinA,pinB
 fm.register(27, fm.fpioa.UART2_TX, force=True)
 fm.register(28, fm.fpioa.UART2_RX, force=True)
 SYSTEM_AT_UART = UART(UART.UART2, 115200,timeout=5000, read_buf_len=40960)
