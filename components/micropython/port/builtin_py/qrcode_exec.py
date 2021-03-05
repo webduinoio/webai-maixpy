@@ -10,24 +10,11 @@ class function:
         machine.reset()
     def tackYoloPic():
         print("b")
-    def tackMobileNetPic(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,test_gpioA,test_gpioB,dsname,count,cameraFlip,url,hashKey):
+    def tackMobileNetPic(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,SYSTEM_BTN_L,SYSTEM_BTN_R,dsname,count,cameraFlip,url,hashKey):
         import sensor,image,lcd,time,math
         from fpioa_manager import *
         from Maix import GPIO
         from board_sensor import showMessage
-        # def showMessage(msg):
-        #     lcd.clear()
-        #     lcd.draw_string(int(311-len(msg)*6.9)//2,224//2,msg,lcd.WHITE)
-
-
-        # test_pinA=7#A
-        # fm.fpioa.set_function(test_pinA,fm.fpioa.GPIO7)
-        # test_gpioA=GPIO(GPIO.GPIO7,GPIO.IN)
-        # test_pinB=16#B
-        # fm.fpioa.set_function(test_pinB,fm.fpioa.GPIO6)
-        # test_gpioB=GPIO(GPIO.GPIO6,GPIO.IN)
-
-
         lcd.init(freq=15000000)
         lcd.clear()
         showMessage("init camera",clear=True)
@@ -76,21 +63,21 @@ class function:
             img.draw_rectangle(40,40,144,144,(255,255,255),2,False)
             img.draw_cross(224//2,224//2,size=10,thickness=3)
 
-            if(test_gpioA.value()==0):
+            if(SYSTEM_BTN_L.value()==0):
                 showMessage("wait save",clear=True)
                 img = sensor.snapshot()
                 img.save('/'+savePath+'/picTrainMobilenet_'+picName+str(countTmp)+'.jpg')
                 countTmp+=1
                 # time.sleep(0.5)
                 lcd.clear(lcd.BLACK)
-            if(test_gpioB.value()==0):
+            if(SYSTEM_BTN_R.value()==0):
                 sensor.set_windowing((320, 224))
                 break
             if countTmp==picCount:
                 msg="press L Upload             press R Back"
                 lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
                 while 1:
-                    if(test_gpioA.value()==0):
+                    if(SYSTEM_BTN_L.value()==0):
                         # time.sleep(1)
                         bak = time.ticks()
                         uploadStatus=__class__.uploadPic(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,dsname,count,url,hashKey)
@@ -101,7 +88,7 @@ class function:
                             msg="                            press R Back"
                             lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
                             while 1:
-                                if(test_gpioB.value()==0):
+                                if(SYSTEM_BTN_R.value()==0):
                                     tackPicMode=False
                                     sensor.set_windowing((320, 224))
                                     break
@@ -110,7 +97,7 @@ class function:
                             showMessage("error",clear=True)
                             showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
                         break
-                    if(test_gpioB.value()==0):
+                    if(SYSTEM_BTN_R.value()==0):
                         tackPicMode=False
                         sensor.set_windowing((320, 224))
                         break
@@ -119,7 +106,7 @@ class function:
                 msg="press L Take                press R Back"
                 lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
 
-    def downloadModel(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,test_gpioA,test_gpioB,fileName,modelType,url):
+    def downloadModel(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,SYSTEM_BTN_L,SYSTEM_BTN_R,fileName,modelType,url,isFile=False):
         # global SYSTEM_AT_UART
         import time
         import network
@@ -262,12 +249,12 @@ class function:
         #     print(myLine)
         # time.sleep(0.5)
         #SYSTEM_AT_UART = UART(UART.UART2, 115200, timeout=5000, read_buf_len=40960)
-        time.sleep(1)
+        # time.sleep(1)
         #commCycle(SYSTEM_AT_UART,"AT+GMR")
-        print("uid:"+readUID(SYSTEM_AT_UART))
-        print(globals())
-        print(help(SYSTEM_AT_UART))
-        commCycle(SYSTEM_AT_UART,"AT+GMR")
+        # print("uid:"+readUID(SYSTEM_AT_UART))
+        # print(globals())
+        # print(help(SYSTEM_AT_UART))
+        # commCycle(SYSTEM_AT_UART,"AT+GMR")
         #SYSTEM_AT_UART.write("AT+GMR"+"\r\n")    # Version
         #myLine = ''
         #while not "OK" in myLine:
@@ -277,18 +264,12 @@ class function:
             #print(myLine)
         #global uart3
         #uart3=SYSTEM_AT_UART
-        speed = 115200*40
-        commCycle(SYSTEM_AT_UART,"AT+UART_CUR="+str(speed)+",8,1,0,0")
-        #SYSTEM_AT_UART.write("AT+UART_CUR="+str(speed)+",8,1,0,0"+"\r\n")    # Version
-        #myLine = ''
-        #while not "OK" in myLine:
-            #while not SYSTEM_AT_UART.any():
-                #pass
-            #myLine = SYSTEM_AT_UART.readline()
-            #print(myLine)
-        time.sleep(1)
-        SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
-        time.sleep(1)
+
+        # speed = 115200*40
+        # commCycle(SYSTEM_AT_UART,"AT+UART_CUR="+str(speed)+",8,1,0,0")
+        # time.sleep(0.5)
+        # SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
+
         showMessage("wait init",clear=True)
         WIFI_SSID = ""
         WIFI_PASW = ""
@@ -323,18 +304,18 @@ class function:
         onlineCheck = 0
         offlineCheck = 0
         print("start check")
-        while onlineCheck < 3:
+        while onlineCheck < 2:
             if wifiStatusPin.value() == 0:
                 print("offline")
                 offlineCheck+=1
-                if offlineCheck>=2:
+                if offlineCheck > 2:
                     showMessage("init error",clear=True)
                     onlineStatus=False
                     #sys.exit()
             else:
                 print("online")
                 onlineCheck += 1
-            time.sleep(1)
+            time.sleep(0.5)
         print("end")
         # bak = time.ticks()
         start = time.time()
@@ -354,9 +335,15 @@ class function:
         try:
             if onlineStatus == True:
                 if SYSTEM_DEFAULT_PATH=="flash":
-                    from Maix import utils
+                    if isFile==True:
+                        saveFile=open('/flash/'+fileName,'w')
+                    else:
+                        from Maix import utils
                 else:
-                    sdFile=open('/sd/'+fileName+'.kmodel','w')
+                    if isFile==True:
+                        saveFile=open('/sd/'+fileName,'w')
+                    else:
+                        saveFile=open('/sd/'+fileName+'.kmodel','w')
                 tmp = MiniHttp()
                 filename, file_pos, filesize = b'', 0, 0
                 block_size = 20480
@@ -405,14 +392,19 @@ class function:
                                 try:
                                     if len(data) == (file_end - file_pos):
                                         print("debug3")
-                                        if SYSTEM_DEFAULT_PATH=="flash":
+                                        if isFile==True:
                                             print("write1")
-                                            utils.flash_write(modelAddress + file_pos, data)
+                                            saveFile.write(data)
                                             print("write2")
                                         else:
-                                            print("write1")
-                                            sdFile.write(data)
-                                            print("write2")
+                                            if SYSTEM_DEFAULT_PATH=="flash":
+                                                print("write1")
+                                                utils.flash_write(modelAddress + file_pos, data)
+                                                print("write2")
+                                            else:
+                                                print("write1")
+                                                saveFile.write(data)
+                                                print("write2")
                                         showMessage("download %s"%str(int(file_pos/filesize*100))+"%")
                                         showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
                                         if file_end == filesize:
@@ -444,49 +436,50 @@ class function:
             print("error>2")
         finally:
             if onlineStatus==True:
-                if SYSTEM_DEFAULT_PATH=="sd":
+                if SYSTEM_DEFAULT_PATH=="sd" or isFile==True:
                     try:
-                        sdFile.close()
+                        saveFile.close()
                     except Exception as e:
                         print(e)
-                        print("sd close error")
+                        print("file close error")
                 try:
                     tmp.exit()
                 except Exception as e:
                     print(e)
                     print("http close error")
-                finally:
-                    print("uid:"+readUID(SYSTEM_AT_UART))
-                    time.sleep(1)
-                    print("uid:"+readUID(SYSTEM_AT_UART))
-            print("reset speed")
-            time.sleep(1)
-            speed = 115200*1
-            commCycle(SYSTEM_AT_UART,"AT+UART_CUR="+str(speed)+",8,1,0,0")
-            #SYSTEM_AT_UART.write("AT+UART_CUR="+str(speed)+",8,1,0,0"+"\r\n")    # Version
-            #myLine = ''
-            #while not "OK" in myLine:
-                #while not SYSTEM_AT_UART.any():
-                    #pass
-                #myLine = SYSTEM_AT_UART.readline()
-                #print(myLine)
-            SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
-            if downloadStatus==True:
-                showMessage("ok",clear=True)
+            if downloadStatus==True and isFile==True and fileName=="main.py":
+                showMessage("rebooting ...",clear=True)
             else:
-                showMessage("error",clear=True)
-            msg="                            press R Back"
-            lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
-            while 1:
-                if(test_gpioB.value()==0):
-                    break
-            print(filename, filesize, round(time.time() - start, 1), 'over')
-            print('total time ', time.ticks() - bak)
+                print("reset speed")
+                # print("uid:"+readUID(SYSTEM_AT_UART))
+                while SYSTEM_AT_UART.any():
+                    SYSTEM_AT_UART.readline()
+                time.sleep(1)
+                speed = 115200*1
+                commCycle(SYSTEM_AT_UART,"AT+UART_CUR="+str(speed)+",8,1,0,0")
+                #SYSTEM_AT_UART.write("AT+UART_CUR="+str(speed)+",8,1,0,0"+"\r\n")    # Version
+                #myLine = ''
+                #while not "OK" in myLine:
+                    #while not SYSTEM_AT_UART.any():
+                        #pass
+                    #myLine = SYSTEM_AT_UART.readline()
+                    #print(myLine)
+                SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
+                if downloadStatus==True:
+                    showMessage("ok",clear=True)
+                else:
+                    showMessage("error",clear=True)
+                msg="                            press R Back"
+                lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
+                while 1:
+                    if(SYSTEM_BTN_R.value()==0):
+                        break
+                print(filename, filesize, round(time.time() - start, 1), 'over')
+                print('total time ', time.ticks() - bak)
 
-    # def tackMobileNetPic(SYSTEM_DEFAULT_PATH,test_gpioA,test_gpioB,dsname,count,cameraFlip,url,hashKey):
+    # def tackMobileNetPic(SYSTEM_DEFAULT_PATH,SYSTEM_BTN_L,SYSTEM_BTN_R,dsname,count,cameraFlip,url,hashKey):
 
     def uploadPic(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,dsname,count,url,hashKey):
-        import time
         from fpioa_manager import fm
         from Maix import GPIO
         import gc,time
@@ -494,54 +487,8 @@ class function:
         import network    
         from microWebCli import MicroWebCli
         showMessage("wait init",clear=True)
-        #fm.register(19, fm.fpioa.GPIO1)
-        #pin8285wifi=GPIO(GPIO.GPIO1,GPIO.IN)
         fm.register(19, fm.fpioa.GPIOHS0)
         wifiStatusPin = GPIO(GPIO.GPIOHS0, GPIO.IN)
-
-        #fm.register(18, fm.fpioa.UART1_RX, force=True)
-        #uart = UART(UART.UART1, 115200*1, timeout=5000, read_buf_len=40960)
-        #fm.register(27, fm.fpioa.UART2_TX, force=True)
-        #fm.register(28, fm.fpioa.UART2_RX, force=True)
-        #uart2 = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
-
-        # pin8285=20
-        # fm.register(pin8285, fm.fpioa.GPIO0)
-        # reset=GPIO(GPIO.GPIO0,GPIO.OUT)
-        # reset.value(0)
-        # time.sleep(0.2)
-        # reset.value(1)
-        # fm.unregister(pin8285)
-        # myLine=''
-        # while not "init finish" in myLine:
-        #     while not uart2.any():
-        #         #time.sleep(1)
-        #         #print("not data")
-        #         pass
-        #     myLine = uart2.readline()
-        #     print(myLine)
-
-
-        #speed=115200*20
-        #uart2.write("AT+UART_CUR="+str(speed)+",8,1,0,0"+"\r\n")#Version
-        #myLine = ''
-        #while  not  "OK" in myLine:
-            #while not uart2.any():
-                #pass
-            #myLine = uart2.readline()
-            #print(myLine)
-
-        #time.sleep(1)
-        #uart2 = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
-        #uart2.write('AT+GMR\r\n')
-        #myLine = ''
-        #while  not  "OK" in myLine:
-            #while not uart2.any():
-                #pass
-            #myLine = uart2.readline()
-            #print(myLine)
-
-        #time.sleep(3)
         print("connect wifi")
         WIFI_SSID = ""
         WIFI_PASW = ""
@@ -576,20 +523,20 @@ class function:
         onlineCheck = 0
         offlineCheck = 0
         print("start check")
-        while onlineCheck < 3:
+        while onlineCheck < 2:
             if wifiStatusPin.value() == 0:
                 print("offline")
                 offlineCheck+=1
-                if offlineCheck>=2:
+                if offlineCheck > 2:
                     showMessage("init error",clear=True)
                     onlineStatus=False
                     #sys.exit()
             else:
                 print("online")
                 onlineCheck += 1
-            time.sleep(1)
+            time.sleep(0.5)
         print("end")
-        del wifiStatusPin,WIFI_SSID,WIFI_PASW,onlineCheck,offlineCheck,onlineStatus
+        del wifiStatusPin,WIFI_SSID,WIFI_PASW,onlineCheck,offlineCheck,onlineStatus,wlan,err
         gc.collect()
         showMessage("uploading...",clear=True)
         import ubinascii,machine
@@ -725,7 +672,7 @@ class function:
             if resp.IsSuccess():
                 o = resp.ReadContent()
                 print('POST success', o)
-                del resp,o
+                del resp,o,boundary
                 if wCli.IsClosed==False:
                     wCli.Close()
                     del wCli
@@ -734,7 +681,7 @@ class function:
                 return True
             else:
                 print('POST return %d code (%s)' %(resp.GetStatusCode(), resp.GetStatusMessage()))
-                del resp
+                del resp,boundary
                 if wCli.IsClosed==False:
                     wCli.Close()
                     del wCli
@@ -744,18 +691,18 @@ class function:
         except Exception as e:
             print("err")
             print(e)
-            del data,fileList,headers,url
+            del data,fileList,headers,url,boundary
             try:
                 del resp
             except Exception as f:
                 print(f)
-                print("error gc")
+                print("error del resp")
             try:
                 wCli.Close()
                 del wCli
             except Exception as f:
                 print(f)
-                print("error gc")
+                print("error del wCli")
             gc.collect()
             return False
 
