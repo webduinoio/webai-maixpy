@@ -126,6 +126,9 @@ menu "Micropython configurations"
 		config MAIXPY_BUILTIN_PY_EXTEND_SENSOR
 			bool "Enable builtin py module extend_sensor"
 			default y
+		config MAIXPY_BUILTIN_PY_GIGO_SENSOR
+			bool "Enable builtin py module gigo_sensor"
+			default y
 		config MAIXPY_BUILTIN_PY_BOARD_NETWORK
 			bool "Enable builtin py module board_network"
 			default y
