@@ -150,9 +150,9 @@ bool setOprToStation(esp8285_obj* nic)
 }
 
 
-bool joinAP(esp8285_obj* nic, const char* ssid, const char* pwd)
+bool joinAP(esp8285_obj* nic, const char* ssid, const char* pwd, bool ping)
 {
-    return sATCWJAP(nic,ssid, pwd);
+    return sATCWJAP(nic,ssid, pwd, ping);
 }
 
 bool enableClientDHCP(esp8285_obj* nic,char mode, bool enabled)
@@ -1029,8 +1029,26 @@ bool sATCWMODE(esp8285_obj* nic,char mode)
     return false;
 }
 
-bool sATCWJAP(esp8285_obj* nic, const char* ssid, const char* pwd)
+bool qATPING(esp8285_obj* nic, const char* ip)
 {
+	int errcode = 0;
+    const char* cmd = "AT+PING=\"";
+	const mp_stream_p_t * uart_stream = mp_get_stream(nic->uart_obj);
+	rx_empty(nic);
+	uart_stream->write(nic->uart_obj,cmd,strlen(cmd),&errcode);
+    uart_stream->write(nic->uart_obj,ip,strlen(ip),&errcode);
+    uart_stream->write(nic->uart_obj,"\"",strlen("\""),&errcode);
+	uart_stream->write(nic->uart_obj,"\r\n",strlen("\r\n"),&errcode);
+	return recvFind(nic,"OK",1000);
+}
+
+bool sATCWJAP(esp8285_obj* nic, const char* ssid, const char* pwd, bool ping)
+{
+    if (ping){
+        if (qATPING(nic,"168.95.1.1")) {
+            return true;
+        }
+    }
 	int errcode = 0;
 	const char* cmd = "AT+CWJAP=\"";
     int8_t find;
@@ -1358,7 +1376,7 @@ bool eINIT(esp8285_obj* nic)
 	// init_flag = init_flag && eAT(nic);
 	init_flag = init_flag && eATE(nic,1);
 	// init_flag = init_flag && sATCIPMODE(nic,0);
-	// init_flag = init_flag && setOprToStation(nic);
+	init_flag = init_flag && setOprToStation(nic);
 	// init_flag = init_flag && disableMUX(nic);
 	// init_flag = init_flag && leaveAP(nic);
 	return init_flag;

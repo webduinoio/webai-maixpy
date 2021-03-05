@@ -211,11 +211,12 @@ STATIC mp_obj_t esp8285_make_new(const mp_obj_type_t *type, size_t n_args, size_
 }
 
 STATIC mp_obj_t esp8285_nic_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-	enum { ARG_ssid, ARG_key};
+	enum { ARG_ssid, ARG_key, ARG_ping};
 	nic_obj_t* self = NULL;
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_ssid, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_key, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_ping, MP_ARG_BOOL, {.u_bool = false} }, 
     };
 
     // parse args
@@ -241,13 +242,13 @@ STATIC mp_obj_t esp8285_nic_connect(size_t n_args, const mp_obj_t *pos_args, mp_
     }
     // connect to AP
     
-    if (0 == joinAP(&self->esp8285, ssid, key)) {
+    if (0 == joinAP(&self->esp8285, ssid, key, args[ARG_ping].u_obj)) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "could not connect to ssid=%s\n", ssid));
     }
 	nic_connected = 1;
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(esp8285_nic_connect_obj, 1, esp8285_nic_connect);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(esp8285_nic_connect_obj, 3, esp8285_nic_connect);
 
 STATIC mp_obj_t esp8285_nic_disconnect(mp_obj_t self_in) {
     // should we check return value?

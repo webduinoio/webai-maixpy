@@ -103,7 +103,7 @@ bool setOprToStation(esp8285_obj* nic);
  * @retval false - failure.
  * @note This method will take a couple of seconds. 
  */
-bool joinAP(esp8285_obj* nic, const char* ssid, const char* pwd);
+bool joinAP(esp8285_obj* nic, const char* ssid, const char* pwd, bool ping);
 
 
 /**
@@ -381,7 +381,7 @@ bool eATRST(esp8285_obj* nic);
 bool eATGMR(esp8285_obj* nic,char** version);
 bool qATCWMODE(esp8285_obj* nic,char* mode);
 bool sATCWMODE(esp8285_obj* nic,char mode);
-bool sATCWJAP(esp8285_obj* nic, const char* ssid, const char* pwd);
+bool sATCWJAP(esp8285_obj* nic, const char* ssid, const char* pwd, bool ping);
 bool sATCWDHCP(esp8285_obj* nic,char mode, bool enabled);
 bool eATCWQAP(esp8285_obj* nic);
 
