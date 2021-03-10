@@ -94,7 +94,7 @@ class function:
                                     break
                         else:
                             print("status:error")
-                            showMessage("error",clear=True)
+                            # showMessage("error",clear=True)
                             showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
                         break
                     if(SYSTEM_BTN_R.value()==0):
@@ -265,11 +265,10 @@ class function:
         #global uart3
         #uart3=SYSTEM_AT_UART
 
-        # speed = 115200*40
-        # commCycle(SYSTEM_AT_UART,"AT+UART_CUR="+str(speed)+",8,1,0,0")
-        # time.sleep(0.5)
-        # SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
-
+        speed = 115200*40
+        commCycle(SYSTEM_AT_UART,"AT+UART_CUR="+str(speed)+",8,1,0,0")
+        time.sleep(0.5)
+        SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
         showMessage("wait init",clear=True)
         WIFI_SSID = ""
         WIFI_PASW = ""
@@ -288,6 +287,8 @@ class function:
             print("not setting wifi")
             onlineStatus=False
         if onlineStatus==True:
+            # wlan = ""
+            # err = ""
             wlan = network.ESP8285(SYSTEM_AT_UART)
             err = 0
             while 1:
@@ -507,19 +508,21 @@ class function:
             print("not setting wifi")
             onlineStatus=False
         if onlineStatus==True:
-            wlan = network.ESP8285(SYSTEM_AT_UART)
-            err = 0
-            while 1:
-                try:
-                    wlan.connect(WIFI_SSID, WIFI_PASW)
-                except Exception:
-                    err += 1
-                    print("Connect AP failed, now try again")
-                    if err > 1:
-                        break
-                    #raise Exception("Conenct AP fail")
-                    continue
-                break
+            wlan = ""
+            err = ""
+            # wlan = network.ESP8285(SYSTEM_AT_UART)
+            # err = 0
+            # while 1:
+            #     try:
+            #         wlan.connect(WIFI_SSID, WIFI_PASW)
+            #     except Exception:
+            #         err += 1
+            #         print("Connect AP failed, now try again")
+            #         if err > 1:
+            #             break
+            #         #raise Exception("Conenct AP fail")
+            #         continue
+            #     break
         onlineCheck = 0
         offlineCheck = 0
         print("start check")
@@ -536,174 +539,179 @@ class function:
                 onlineCheck += 1
             time.sleep(0.5)
         print("end")
-        del wifiStatusPin,WIFI_SSID,WIFI_PASW,onlineCheck,offlineCheck,onlineStatus,wlan,err
+        del wifiStatusPin,WIFI_SSID,WIFI_PASW,onlineCheck,offlineCheck,wlan,err
         gc.collect()
-        showMessage("uploading...",clear=True)
-        import ubinascii,machine
-        import uos
-        # import urequests,gc
-        import gc
+        if onlineStatus:
+            showMessage("uploading...",clear=True)
+            import ubinascii,machine
+            import uos
+            # import urequests,gc
+            import gc
 
-        def make_request(data, fileList=None):
-            #boundary = ubinascii.hexlify(10).decode('ascii')
-            #boundary="57b5c8a55605dab80d665e34b52eee368"
-            boundary = "webAI"+ubinascii.hexlify(machine.unique_id()[:14]).decode('ascii')
-            # boundary="57b5c8a55605dab80d665e34b52eee370"
+            def make_request(data, fileList=None):
+                #boundary = ubinascii.hexlify(10).decode('ascii')
+                #boundary="57b5c8a55605dab80d665e34b52eee368"
+                boundary = "webAI"+ubinascii.hexlify(machine.unique_id()[:14]).decode('ascii')
+                # boundary="57b5c8a55605dab80d665e34b52eee370"
 
-            def encode_field(field_name):
-                return (
-                    b'------%s' % boundary,
-                    b'Content-Disposition: form-data; name="%s"' % field_name,
-                    b'',
-                    b'%s'% data[field_name]
-                )
+                def encode_field(field_name):
+                    return (
+                        b'------%s' % boundary,
+                        b'Content-Disposition: form-data; name="%s"' % field_name,
+                        b'',
+                        b'%s'% data[field_name]
+                    )
 
-            def encode_file(field_name):
-                # filename = field_name[4:]
-                filename = field_name[field_name.find("/",1)+1:]
-                print(filename)
+                def encode_file(field_name):
+                    # filename = field_name[4:]
+                    filename = field_name[field_name.find("/",1)+1:]
+                    print(filename)
+                    gc.collect()
+                    imageData=None
+                    with open(field_name, 'rb') as f:
+                        imageData = f.read()
+                    return (
+                        b'------%s' % boundary,
+                        b'Content-Disposition: form-data; name="%s"; filename="%s"' % ('image', filename),
+                        b'Content-Type: image/jpeg'
+                        b'',
+                        b'',
+                        imageData
+                    )
+
+                lines = []
+                for name in data:
+                    lines.extend(encode_field(name))
+                if fileList:
+                    for i in fileList:
+                        lines.extend(encode_file(i))
+                lines.extend((b'------%s--' % boundary, b''))
+                body = b'\r\n'.join(lines)
+                headers = {
+                    'content-type': 'multipart/form-data; boundary=----' + boundary,
+                    'content-length': str(len(body)),
+                    'Connection':'keep-alive'}
+                del lines
                 gc.collect()
-                imageData=None
-                with open(field_name, 'rb') as f:
-                    imageData = f.read()
-                return (
-                    b'------%s' % boundary,
-                    b'Content-Disposition: form-data; name="%s"; filename="%s"' % ('image', filename),
-                    b'Content-Type: image/jpeg'
-                    b'',
-                    b'',
-                    imageData
-                )
-
-            lines = []
-            for name in data:
-                lines.extend(encode_field(name))
-            if fileList:
-                for i in fileList:
-                    lines.extend(encode_file(i))
-            lines.extend((b'------%s--' % boundary, b''))
-            body = b'\r\n'.join(lines)
-            headers = {
-                'content-type': 'multipart/form-data; boundary=----' + boundary,
-                'content-length': str(len(body)),
-                'Connection':'keep-alive'}
-            del lines
-            gc.collect()
-            return body,headers,boundary
+                return body,headers,boundary
 
 
-        # def upload_image(url, headers, data):
-        #     http_response = urequests.post(
-        #         url,
-        #         headers=headers,
-        #         data=data
-        #     )
-        #     print("response txt")
-        #     # print(http_response.text)
-        #     if http_response.status_code == 200:
-        #         print('Uploaded request')
-        #     else:
-        #         print("error")
-        #     print(help(http_response))
-        #     http_response.close()
-        #     return http_response.status_code
-            
-        # data = {"dsname":dsname,"shared":"false"}
-        # fileList=[]
-        # for i in range(0,int(count)):
-        #     # picTrainMobilenet_picName0.jpg
-        #     fileList.append('/'+SYSTEM_DEFAULT_PATH+'/picTrainMobilenet_'+dsname+str(i)+'.jpg')
-        #     # print(fileList[i])
-        # print(fileList)
-        # data, headers = make_request(data, fileList)
-        # # print(data)
-        # # print(headers)
-        # # print(url[url.find(":"):])
-        # url="http"+url[url.find(":"):]+"?hashkey="+hashKey
-        # print(url)
-        # try:
-        #     r=upload_image(url, headers=headers, data=data)
-        #     if r==200:
-        #         del data,fileList,headers,url,r
-        #         gc.collect()
-        #         return True
-        #     else:
-        #         del data,fileList,headers,url,r
-        #         gc.collect()
-        #         return False
-        # except Exception as e:
-        #     print("err")
-        #     print(e)
-        #     del data,fileList,headers,url
-        #     gc.collect()
-        #     return False
+            # def upload_image(url, headers, data):
+            #     http_response = urequests.post(
+            #         url,
+            #         headers=headers,
+            #         data=data
+            #     )
+            #     print("response txt")
+            #     # print(http_response.text)
+            #     if http_response.status_code == 200:
+            #         print('Uploaded request')
+            #     else:
+            #         print("error")
+            #     print(help(http_response))
+            #     http_response.close()
+            #     return http_response.status_code
+                
+            # data = {"dsname":dsname,"shared":"false"}
+            # fileList=[]
+            # for i in range(0,int(count)):
+            #     # picTrainMobilenet_picName0.jpg
+            #     fileList.append('/'+SYSTEM_DEFAULT_PATH+'/picTrainMobilenet_'+dsname+str(i)+'.jpg')
+            #     # print(fileList[i])
+            # print(fileList)
+            # data, headers = make_request(data, fileList)
+            # # print(data)
+            # # print(headers)
+            # # print(url[url.find(":"):])
+            # url="http"+url[url.find(":"):]+"?hashkey="+hashKey
+            # print(url)
+            # try:
+            #     r=upload_image(url, headers=headers, data=data)
+            #     if r==200:
+            #         del data,fileList,headers,url,r
+            #         gc.collect()
+            #         return True
+            #     else:
+            #         del data,fileList,headers,url,r
+            #         gc.collect()
+            #         return False
+            # except Exception as e:
+            #     print("err")
+            #     print(e)
+            #     del data,fileList,headers,url
+            #     gc.collect()
+            #     return False
 
 
 
-
-        gc.collect()
-        data = {"dsname":dsname,"shared":"false"}
-        fileList=[]
-        for i in range(0,int(count)):
-            # picTrainMobilenet_picName0.jpg
-            fileList.append('/'+SYSTEM_DEFAULT_PATH+'/picTrainMobilenet_'+dsname+str(i)+'.jpg')
-            # print(fileList[i])
-        print(fileList)
-        data, headers, boundary = make_request(data, fileList)
-        # print(data)
-        # print(headers)
-        # print(url[url.find(":"):])
-        # url = "https://vision-api.webduino.io/mlapi/datasets/uploadimgs"
-        # hashKey="e6d893675bddced7396d254a8bead424"
-        url="https"+url[url.find(":"):]+"?hashkey="+hashKey
-        wCli = MicroWebCli(url, 'POST')
-        # print('POST %s' % wCli.URL)
-        print(url)
-        print("add ok")
-        # print(data)
-        print("bodylen:"+str(len(data)))
-        try:
-            print(boundary)
-            wCli.OpenRequest(None, 'multipart/form-data; boundary=----%s' % boundary, str(len(data)))
-            print("write")
-            wCli._write(data)
-            print("write end")
-            resp = wCli.GetResponse()
-            if resp.IsSuccess():
-                o = resp.ReadContent()
-                print('POST success', o)
-                del resp,o,boundary
-                if wCli.IsClosed==False:
+            # gc.collect()
+            data = {"dsname":dsname,"shared":"false"}
+            fileList=[]
+            for i in range(0,int(count)):
+                # picTrainMobilenet_picName0.jpg
+                fileList.append('/'+SYSTEM_DEFAULT_PATH+'/picTrainMobilenet_'+dsname+str(i)+'.jpg')
+                # print(fileList[i])
+            print(fileList)
+            data, headers, boundary = make_request(data, fileList)
+            # print(data)
+            # print(headers)
+            # print(url[url.find(":"):])
+            # url = "https://vision-api.webduino.io/mlapi/datasets/uploadimgs"
+            # hashKey="e6d893675bddced7396d254a8bead424"
+            url="https"+url[url.find(":"):]+"?hashkey="+hashKey
+            wCli = MicroWebCli(url, 'POST')
+            # print('POST %s' % wCli.URL)
+            print(url)
+            print("add ok")
+            # print(data)
+            print("bodylen:"+str(len(data)))
+            try:
+                print(boundary)
+                wCli.OpenRequest(None, 'multipart/form-data; boundary=----%s' % boundary, str(len(data)))
+                print("write")
+                wCli._write(data)
+                print("write end")
+                resp = wCli.GetResponse()
+                if resp.IsSuccess():
+                    o = resp.ReadContent()
+                    print('POST success', o)
+                    del resp,o,boundary
+                    if wCli.IsClosed==False:
+                        wCli.Close()
+                        del wCli
+                    gc.collect()
+                    del data,fileList,headers,url
+                    return True
+                else:
+                    print('POST return %d code (%s)' %(resp.GetStatusCode(), resp.GetStatusMessage()))
+                    del resp,boundary
+                    if wCli.IsClosed==False:
+                        wCli.Close()
+                        del wCli
+                    gc.collect()
+                    del data,fileList,headers,url
+                    showMessage("error",clear=True)
+                    return False
+            except Exception as e:
+                print("err")
+                print(e)
+                del data,fileList,headers,url,boundary
+                try:
+                    del resp
+                except Exception as f:
+                    print(f)
+                    print("error del resp")
+                try:
                     wCli.Close()
                     del wCli
+                except Exception as f:
+                    print(f)
+                    print("error del wCli")
                 gc.collect()
-                del data,fileList,headers,url
-                return True
-            else:
-                print('POST return %d code (%s)' %(resp.GetStatusCode(), resp.GetStatusMessage()))
-                del resp,boundary
-                if wCli.IsClosed==False:
-                    wCli.Close()
-                    del wCli
-                gc.collect()
-                del data,fileList,headers,url
+                showMessage("error",clear=True)
                 return False
-        except Exception as e:
-            print("err")
-            print(e)
-            del data,fileList,headers,url,boundary
-            try:
-                del resp
-            except Exception as f:
-                print(f)
-                print("error del resp")
-            try:
-                wCli.Close()
-                del wCli
-            except Exception as f:
-                print(f)
-                print("error del wCli")
-            gc.collect()
+        else:
+            showMessage("network error",clear=True)
             return False
 
         # print('Uploading request success')

@@ -140,10 +140,10 @@ menu "Micropython configurations"
 			default y
 		config MAIXPY_BUILTIN_PY_UREQUESTS
 			bool "Enable builtin py module urequests"
-			default n
+			default y
 		config MAIXPY_BUILTIN_PY_MICROWEBCLI
 			bool "Enable builtin py module microWebCli"
-			default n
+			default y
 	endmenu
 
 	menu "Debug configurations"

@@ -203,6 +203,7 @@ try:
                     # time.sleep(0.5)
                     print("info")
                     SYSTEM_WiFiInfo=SYSTEM_WLAN.ifconfig()
+                    print(SYSTEM_WiFiInfo)
                     wifiStatus="OK"
                     print("end")
                 except Exception as e:
@@ -219,7 +220,7 @@ try:
             wifiStatus="OK"
     del err,WIFI_SSID,WIFI_PASW,setWiFiFlag
 
-    print(SYSTEM_WiFiInfo)
+    # print(SYSTEM_WiFiInfo)
     if wifiStatus=="OK":
         showMessage(" "*40,x=-1,y=4,center=False,clear=False)
         showMessage("WiFi status:OK ("+SYSTEM_WiFiInfo[6]+" dBm)",x=-1,y=4,center=False,clear=False)
@@ -525,6 +526,54 @@ else:
 #SYSTEM_DEFAULT_PATH
 gc.collect()
 # from board import board_info
+
+def MQTT_CALLBACK(uartObj):
+    SYSTEM_LOG_UART.stop()
+    from qrcode_exec import function
+    SUBSCRIBE_MSG=None
+    try:
+        while SYSTEM_LOG_UART.any():
+            myLine = SYSTEM_LOG_UART.readline()
+            # print(myLine)
+            SUBSCRIBE_MSG=myLine.decode().strip()
+            if "mqtt" in SUBSCRIBE_MSG[0:4]:
+                SUBSCRIBE_MSG=SUBSCRIBE_MSG.split(',',2)
+
+        if SUBSCRIBE_MSG!=None and len(SUBSCRIBE_MSG)==3:
+            if SUBSCRIBE_MSG[1]==SYSTEM_ESP_DEVICE_ID+"/PING" and (len(SUBSCRIBE_MSG[2])>=6 and SUBSCRIBE_MSG[2][0:6]=="DEPLOY"):
+                function.downloadModel(SYSTEM_AT_UART,SYSTEM_DEFAULT_PATH,SYSTEM_BTN_L,SYSTEM_BTN_R,'main.py','yolo',SUBSCRIBE_MSG[2][7:],True)
+                print("reset")
+                #time.sleep(1)
+                import machine
+                machine.reset()
+            if SYSTEM_THREAD_MQTT_FLAG==True:
+                MQTT_MSG_CHECKCOUNT=0
+                for i in SYSTEM_MQTT_TOPIC:
+                    if SUBSCRIBE_MSG[1]==i:
+                        SYSTEM_THREAD_MQTT_MSG[MQTT_MSG_CHECKCOUNT]=SUBSCRIBE_MSG[2]
+                    MQTT_MSG_CHECKCOUNT+=1
+    except Exception as e:
+        print(e)
+        print("MQTT_CALLBACK read error")
+    SYSTEM_LOG_UART.start()
+
+    while SYSTEM_LOG_UART.any():
+        SYSTEM_LOG_UART.readline()
+# from qrcode_exec import function
+
+SYSTEM_THREAD_MQTT_FLAG=False
+SYSTEM_THREAD_MQTT_MSG=[]
+SYSTEM_MQTT_TOPIC=[]
+fm.register(18, fm.fpioa.UART3_RX, force=True)
+SYSTEM_LOG_UART = UART(UART.UART3, 115200*1,timeout=1000, read_buf_len=4096,callback=MQTT_CALLBACK)
+try:
+    print("init SYSTEM_LOG_UART")
+    while SYSTEM_LOG_UART.any():
+        SYSTEM_LOG_UART.readline()
+    print("init SYSTEM_LOG_UART end")
+except Exception as e:
+    print(e)
+    print("SYSTEM_LOG_UART error")
 print("_boot init end")
 for i in range(200):
     time.sleep_ms(1) # wait for key interrupt(for webAI tool)
