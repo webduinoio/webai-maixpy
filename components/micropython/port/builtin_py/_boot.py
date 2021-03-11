@@ -38,106 +38,6 @@ if ide:
     sys.exit()
 del ide, ide_mode_conf
 
-# boot_py = '''
-
-# '''
-# SYSTEM_K210_VERSION=os.uname()
-# from machine import UART
-# from fpioa_manager import fm
-# fm.register(27, fm.fpioa.UART2_TX, force=True)
-# fm.register(28, fm.fpioa.UART2_RX, force=True)
-# SYSTEM_AT_UART = UART(UART.UART2, 115200*1,timeout=1000, read_buf_len=4096)
-# SYSTEM_AT_UART.write('AT+GMR' + '\r\n')
-# myLine = ''
-# SYSTEM_ESP_VERSION=""
-# startTime=time.ticks_ms()
-# ifdata=True
-# while  not  "OK" in myLine:
-#     while not SYSTEM_AT_UART.any():
-#         endTime=time.ticks_ms()
-#         # print(end-start)
-#         if((endTime-startTime)>=5000):
-#             ifdata=False
-#             break
-#     if(ifdata):
-#         myLine = SYSTEM_AT_UART.readline()
-#         # print(myLine)
-#         if "Bin version" in myLine:
-#             SYSTEM_ESP_VERSION=myLine
-#             SYSTEM_ESP_VERSION=SYSTEM_ESP_VERSION.decode()
-#             SYSTEM_ESP_VERSION=SYSTEM_ESP_VERSION[SYSTEM_ESP_VERSION.find(':')+1:]
-#             SYSTEM_ESP_VERSION=SYSTEM_ESP_VERSION.rstrip()
-#             break
-#     else:
-#         print("timeout")
-#         break
-
-# # while  not  "OK" in myLine:
-# #     while not SYSTEM_AT_UART.any():
-# #         pass
-# #     myLine = SYSTEM_AT_UART.readline()
-# #     if "Bin version" in myLine:
-# #         SYSTEM_ESP_VERSION=myLine
-# print("webAI:"+SYSTEM_K210_VERSION[5])
-# print("esp8285:"+SYSTEM_ESP_VERSION)
-# # del SYSTEM_K210_VERSION,SYSTEM_AT_UART,myLine,SYSTEM_ESP_VERSION,startTime,ifdata,endTime
-# # version = {
-# #   "versionK210": SYSTEM_K210_VERSION[5],
-# #   "SYSTEM_ESP_VERSION": 
-# # }
-# # del SYSTEM_K210_VERSION,version
-
-
-
-
-boot_py = '''
-try:
-    from machine import UART
-    from fpioa_manager import fm
-    from Maix import GPIO
-    import gc,time
-
-    fm.register(27, fm.fpioa.UART2_TX, force=True)
-    fm.register(28, fm.fpioa.UART2_RX, force=True)
-    SYSTEM_AT_UART = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
-
-    pin8285=20
-    fm.register(pin8285, fm.fpioa.GPIO0)
-    reset=GPIO(GPIO.GPIO0,GPIO.OUT)
-    reset.value(0)
-    time.sleep(0.2)
-    reset.value(1)
-    fm.unregister(pin8285)
-    bak = time.ticks()
-    myLine = ''
-    while  not  "ready" in myLine:
-        while not SYSTEM_AT_UART.any():
-            pass
-        myLine = SYSTEM_AT_UART.readline()
-        print(myLine)
-        
-    # myLine = ''
-    # while  not  "WIFI GOT IP" in myLine:
-    #     while not SYSTEM_AT_UART.any():
-    #         pass
-    #     myLine = SYSTEM_AT_UART.readline()
-    #     #print(myLine)
-
-    # SYSTEM_AT_UART.write('AT+CIPSTA?\\r\\n'.format(enter="\\r\\n"))
-    # myLine = ''
-    # while  not  "OK" in myLine:
-        # while not SYSTEM_AT_UART.any():
-            # pass
-        # myLine = SYSTEM_AT_UART.readline()
-        # print(myLine)
-    # time.sleep(1)
-    # commCycle("AT+CIPSTA?")
-    # print('total time ', (time.ticks() - bak) / 1000, ' s')
-
-finally:
-    gc.collect()
-'''
-
 boot_py = '''
 try:
     print(globals())
@@ -161,6 +61,7 @@ try:
     # pinB=16#B
     # fm.fpioa.set_function(pinB,fm.fpioa.GPIO6)
     # SYSTEM_BTN_R=GPIO(GPIO.GPIO6,GPIO.IN)
+    lcd.init()
     lcd.clear()
     K210_VERSION=os.uname()
     showMessage("k210 ver:"+K210_VERSION[5],x=-1,y=5,center=False,clear=False)
@@ -257,7 +158,6 @@ try:
         sensor.reset()
         sensor.set_pixformat(sensor.RGB565)
         sensor.set_framesize(sensor.QVGA)
-        #sensor.set_vflip(1)
         sensor.run(1)
         sensor.skip_frames(30)
         while True:
@@ -458,6 +358,11 @@ del pinA,pinB
 fm.register(27, fm.fpioa.UART2_TX, force=True)
 fm.register(28, fm.fpioa.UART2_RX, force=True)
 SYSTEM_AT_UART = UART(UART.UART2, 115200,timeout=5000, read_buf_len=40960)
+while SYSTEM_AT_UART.any():
+    endTime=time.ticks_ms()
+    if((endTime-startTime)>=500):
+        break
+    print(SYSTEM_AT_UART.readline())
 SYSTEM_AT_UART.write('AT+GMR' + '\r\n')
 SYSTEM_ESP_VERSION=""
 SYSTEM_ESP_DEVICE_ID=""
@@ -489,13 +394,6 @@ while  not  "OK" in myLine:
     else:
         print("timeout")
         break
-
-# while  not  "OK" in myLine:
-#     while not SYSTEM_AT_UART.any():
-#         pass
-#     myLine = SYSTEM_AT_UART.readline()
-#     if "Bin version" in myLine:
-#         SYSTEM_ESP_VERSION=myLine
 print("K210_VERSION:"+SYSTEM_K210_VERSION[5])
 print("ESP_VERSION:"+SYSTEM_ESP_VERSION)
 print("ESP_DEVICE_ID:"+SYSTEM_ESP_DEVICE_ID)
@@ -507,11 +405,6 @@ print("ESP_DEVICE_ID:"+SYSTEM_ESP_DEVICE_ID)
 # del SYSTEM_AT_UART
 
 del myLine,startTime,ifdata,endTime
-# version = {
-#   "versionK210": SYSTEM_K210_VERSION[5],
-#   "SYSTEM_ESP_VERSION": 
-# }
-# del SYSTEM_K210_VERSION,version
 
 SYSTEM_DEFAULT_PATH=os.getcwd()
 if "flash" in SYSTEM_DEFAULT_PATH:
@@ -520,10 +413,6 @@ if "flash" in SYSTEM_DEFAULT_PATH:
 else:
     print("cwd:sd")
     SYSTEM_DEFAULT_PATH="sd"
-
-#global val
-#SYSTEM_ESP_DEVICE_ID
-#SYSTEM_DEFAULT_PATH
 gc.collect()
 # from board import board_info
 
@@ -547,11 +436,14 @@ def MQTT_CALLBACK(uartObj):
                 import machine
                 machine.reset()
             if SYSTEM_THREAD_MQTT_FLAG==True:
-                MQTT_MSG_CHECKCOUNT=0
-                for i in SYSTEM_MQTT_TOPIC:
-                    if SUBSCRIBE_MSG[1]==i:
-                        SYSTEM_THREAD_MQTT_MSG[MQTT_MSG_CHECKCOUNT]=SUBSCRIBE_MSG[2]
-                    MQTT_MSG_CHECKCOUNT+=1
+                if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1])!=None:
+                    SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]]=SUBSCRIBE_MSG[2]
+                else:
+                    print("error topic")
+
+                # for i in SYSTEM_MQTT_TOPIC:
+                #     if SUBSCRIBE_MSG[1]==i:
+                #         SYSTEM_THREAD_MQTT_MSG[i]=SUBSCRIBE_MSG[2]
     except Exception as e:
         print(e)
         print("MQTT_CALLBACK read error")
@@ -560,10 +452,9 @@ def MQTT_CALLBACK(uartObj):
     while SYSTEM_LOG_UART.any():
         SYSTEM_LOG_UART.readline()
 # from qrcode_exec import function
-
 SYSTEM_THREAD_MQTT_FLAG=False
-SYSTEM_THREAD_MQTT_MSG=[]
-SYSTEM_MQTT_TOPIC=[]
+SYSTEM_THREAD_MQTT_MSG={}
+SYSTEM_MQTT_TOPIC={}
 fm.register(18, fm.fpioa.UART3_RX, force=True)
 SYSTEM_LOG_UART = UART(UART.UART3, 115200*1,timeout=1000, read_buf_len=4096,callback=MQTT_CALLBACK)
 try:

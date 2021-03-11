@@ -10,9 +10,9 @@ class board_info:
     for k, v in __map__.items():
       __class__.set(k, v)
 
-import json,uos
+import json,uos,gc
 webAIVersion=uos.uname()
-config = {
+configFile = {
   "type": "ai",
   "version": webAIVersion[5],
   "board_info": {
@@ -55,7 +55,7 @@ config = {
       'SPK_I2S_SCLK': 35
   }
 }
-cfg = json.dumps(config)
+cfg = json.dumps(configFile)
 #print(cfg)
 try:
     with open('/flash/config.json', 'rb') as f:
@@ -67,7 +67,7 @@ try:
         #   print("flash_format end")
         #   import machine
         #   machine.reset()
-        if tmp["version"] != config["version"]:
+        if tmp["version"] != configFile["version"]:
             raise Exception('config.json no exist')
 except Exception as e:
     with open('/flash/config.json', "w") as f:
@@ -82,14 +82,19 @@ except Exception as e:
       print("del /sd/boot.py")
     import machine
     machine.reset()
-del webAIVersion,config,cfg
 
 from Maix import config
+print("init status")
+gc.collect()
+print(config.__init__())
 tmp = config.get_value('board_info', None)
 if tmp != None:
     board_info.load(tmp)
 else:
     print('[Warning] Not loaded from /flash/config.json to board_info.')
+    board_info.load(configFile)
+del webAIVersion,configFile,cfg
+
 
 from Maix import GPIO
 from fpioa_manager import fm
