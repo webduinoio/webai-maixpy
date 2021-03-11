@@ -144,6 +144,9 @@ menu "Micropython configurations"
 		config MAIXPY_BUILTIN_PY_MICROWEBCLI
 			bool "Enable builtin py module microWebCli"
 			default y
+		config MAIXPY_BUILTIN_PY_SYSTEM_VAR
+			bool "Enable builtin py module system_var"
+			default y
 	endmenu
 
 	menu "Debug configurations"
