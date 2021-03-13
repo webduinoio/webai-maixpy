@@ -8,6 +8,44 @@ import socket
 import gc
 
 class MicroWebCli :
+
+    # ============================================================================
+    # ===( Class AuthBasic  )=====================================================
+    # ============================================================================
+
+    class AuthBasic :
+
+        # ------------------------------------------------------------------------
+
+        def __init__(self, user, password) :
+            if password is None :
+                password = ''
+            if not 'b2a_base64' in globals() :
+                from binascii import b2a_base64
+            cred = '%s:%s' % (user, password)
+            self._auth = 'Basic %s' % b2a_base64(cred.encode()).decode().strip()
+
+        # ------------------------------------------------------------------------
+
+        def Apply(self, microWebCli) :
+            microWebCli.Headers['Authorization'] = self._auth
+
+    # ============================================================================
+    # ===( Class AuthToken  )=====================================================
+    # ============================================================================
+
+    class AuthToken :
+
+        # ------------------------------------------------------------------------
+
+        def __init__(self, token) :
+            self._auth = 'Bearer %s' % token
+
+        # ------------------------------------------------------------------------
+
+        def Apply(self, microWebCli) :
+            microWebCli.Headers['Authorization'] = self._auth
+
     # ============================================================================
     # ===( Utils  )===============================================================
     # ============================================================================
@@ -65,13 +103,78 @@ class MicroWebCli :
     def _unquote_plus(s) :
         return MicroWebCli._unquote(str(s).replace('+', ' '))
 
-    # ---------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
+
+    def GETRequest(url, queryParams=None, auth=None, connTimeoutSec=10, socks5Addr=None) :
+        c = MicroWebCli(url, auth=auth, connTimeoutSec=connTimeoutSec, socks5Addr=socks5Addr)
+        if queryParams :
+            c.QueryParams = queryParams
+        c.OpenRequest()
+        r = c.GetResponse()
+        if r.IsSuccess() :
+            return r.ReadContent()
+        r.Close()
+        if r.IsLocationMoved() :
+            return MicroWebCli.GETRequest(r.LocationMovedURL(), queryParams, auth, connTimeoutSec, socks5Addr)
+        return None
+
+    # ----------------------------------------------------------------------------
+
+    def POSTRequest(url, formData={}, auth=None, connTimeoutSec=10, socks5Addr=None) :
+        c = MicroWebCli(url, method='POST', auth=auth, connTimeoutSec=connTimeoutSec, socks5Addr=socks5Addr)
+        c.OpenRequestFormData(formData)
+        r = c.GetResponse()
+        if r.IsSuccess() :
+            return r.ReadContent()
+        r.Close()
+        if r.IsLocationMoved() :
+            return MicroWebCli.POSTRequest(r.LocationMovedURL(), formData, auth, connTimeoutSec, socks5Addr)
+        return None
+
+    # ----------------------------------------------------------------------------
+
+    def JSONRequest(url, o=None, auth=None, connTimeoutSec=10, socks5Addr=None) :
+        c = MicroWebCli( url,
+                         method         = ('POST' if o else 'GET'),
+                         auth           = auth,
+                         connTimeoutSec = connTimeoutSec,
+                         socks5Addr     = socks5Addr )
+        if o :
+            c.OpenRequestJSONData(o)
+        else :
+            c.OpenRequest()
+        r = c.GetResponse()
+        if r.IsSuccess() :
+            return r.ReadContentAsJSON()
+        r.Close()
+        if r.IsLocationMoved() :
+            return MicroWebCli.JSONRequest(r.LocationMovedURL(), o, auth, connTimeoutSec, socks5Addr)
+        return None
+
+    # ----------------------------------------------------------------------------
+
+    def FileRequest(url, filepath, progressCallback=None, auth=None, connTimeoutSec=10, socks5Addr=None) :
+        c = MicroWebCli(url, auth=auth, connTimeoutSec=connTimeoutSec, socks5Addr=socks5Addr)
+        c.OpenRequest()
+        r = c.GetResponse()
+        if r.IsSuccess() :
+            r.WriteContentToFile(filepath, progressCallback)
+            return r.GetContentType()
+        r.Close()
+        if r.IsLocationMoved() :
+            return MicroWebCli.FileRequest( r.LocationMovedURL(),
+                                            filepath,
+                                            progressCallback,
+                                            auth,
+                                            connTimeoutSec,
+                                            socks5Addr )
+        return None
 
     # ============================================================================
     # ===( Constructor )==========================================================
     # ============================================================================
 
-    def __init__(self, url='', method='GET', auth=None, connTimeoutSec=4, socks5Addr=None) :
+    def __init__(self, url='', method='GET', auth=None, connTimeoutSec=10, socks5Addr=None) :
         self.URL            = url
         self.Method         = method
         self.Auth           = auth
@@ -218,6 +321,35 @@ class MicroWebCli :
             self._write(data)
 
     # ------------------------------------------------------------------------
+
+    def OpenRequestFormData(self, formData={}) :
+        data = ''
+        if len(formData) > 0 :
+            for param in formData :
+                if param != '' :
+                    if data != '' :
+                        data += '&'
+                    data += MicroWebCli._quote(param) + '=' + MicroWebCli._quote(formData[param])
+        self.OpenRequest( data          = data,
+                          contentType   = 'application/x-www-form-urlencoded' )
+
+    # ------------------------------------------------------------------------   
+
+    def OpenRequestJSONData(self, o=None) :
+        if not 'json' in globals() :
+            import json
+        try :
+            data = json.dumps(o)
+        except :
+            raise Exception('Error to convert object to JSON format')
+        self.OpenRequest( data          = data,
+                          contentType   = 'application/json' )
+
+    # ------------------------------------------------------------------------   
+
+    def RequestWriteData(self, data) :
+        self._write(data)
+
     # ------------------------------------------------------------------------
 
     def GetResponse(self) :
