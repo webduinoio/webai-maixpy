@@ -6,16 +6,34 @@ import sys
 import lcd
 from fpioa_manager import fm
 from Maix import GPIO
-from board import board_info, fpioaMapGPIO
-from machine import UART
-# import sensor
-
+from board import board_info
+from machine import UART,Timer,PWM
 
 def Blockly_Init():
     global USER_PWM_LIST
     USER_PWM_LIST = []
-    global SYSTEM_K210_VERSION, SYSTEM_BTN_L, SYSTEM_BTN_R, SYSTEM_AT_UART, SYSTEM_ESP_VERSION, SYSTEM_ESP_DEVICE_ID, SYSTEM_DEFAULT_PATH, SYSTEM_THREAD_MQTT_FLAG, SYSTEM_THREAD_MQTT_MSG, SYSTEM_MQTT_TOPIC, SYSTEM_LOG_UART
+    global SYSTEM_K210_VERSION, SYSTEM_BTN_L, SYSTEM_BTN_R, SYSTEM_AT_UART, SYSTEM_ESP_VERSION, SYSTEM_ESP_DEVICE_ID, SYSTEM_DEFAULT_PATH, SYSTEM_MQTT_CALLBACK_FLAG, SYSTEM_THREAD_MQTT_FLAG, SYSTEM_THREAD_MQTT_MSG, SYSTEM_MQTT_TOPIC, SYSTEM_LOG_UART
     global SYSTEM_WLAN, SYSTEM_WiFiInfo,SYSTEM_WiFiCheckCount
+    global fpioaMapGPIO
+    fpioaMapGPIO={
+'0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
+'1':[board_info.P1,fm.fpioa.GPIOHS1,GPIO.GPIOHS1],
+'2':[board_info.P2,fm.fpioa.GPIOHS2,GPIO.GPIOHS2],
+'3':[board_info.P3,fm.fpioa.GPIOHS3,GPIO.GPIOHS3],
+'5':[board_info.P5,fm.fpioa.GPIOHS5,GPIO.GPIOHS5],
+'6':[board_info.P6,fm.fpioa.GPIOHS6,GPIO.GPIOHS6],
+'7':[board_info.P7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7],
+'8':[board_info.P8,fm.fpioa.GPIOHS8,GPIO.GPIOHS8],
+'9':[board_info.P9,fm.fpioa.GPIOHS9,GPIO.GPIOHS9],
+'10':[board_info.P10,fm.fpioa.GPIOHS10,GPIO.GPIOHS10],
+'11':[board_info.P11,fm.fpioa.GPIOHS11,GPIO.GPIOHS11],
+'12':[board_info.P12,fm.fpioa.GPIOHS12,GPIO.GPIOHS12],
+'13':[board_info.P13,fm.fpioa.GPIOHS13,GPIO.GPIOHS13],
+'14':[board_info.P14,fm.fpioa.GPIOHS14,GPIO.GPIOHS14],
+'15':[board_info.P15,fm.fpioa.GPIOHS15,GPIO.GPIOHS15],
+'16':[board_info.P16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16],
+'19':[board_info.P19,fm.fpioa.GPIO0,GPIO.GPIO0],
+'20':[board_info.P20,fm.fpioa.GPIO1,GPIO.GPIO1]}
     SYSTEM_WLAN = None
     SYSTEM_WiFiInfo = None
     SYSTEM_WiFiCheckCount = 7
@@ -89,73 +107,75 @@ def Blockly_Init():
     # from board import board_info
 
     def MQTT_CALLBACK(uartObj):
-        SYSTEM_LOG_UART.stop()
-        from webai_api import downloadModel,tackMobileNetPic
-        SUBSCRIBE_MSG = None
-        global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC
-        try:
+        if SYSTEM_MQTT_CALLBACK_FLAG==True:
+            SYSTEM_LOG_UART.stop()
+            from webai_api import downloadModel,tackMobileNetPic
+            SUBSCRIBE_MSG = None
+            global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC
+            try:
+                while SYSTEM_LOG_UART.any():
+                    myLine = SYSTEM_LOG_UART.readline()
+                    # print(myLine)
+                    SUBSCRIBE_MSG = myLine.decode().strip()
+                    if "mqtt" in SUBSCRIBE_MSG[0:4]:
+                        SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
+                if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
+                    if SUBSCRIBE_MSG[1] == SYSTEM_ESP_DEVICE_ID+"/PING":
+                        if SUBSCRIBE_MSG[2].find("_DEPLOY/") == 0:
+                            # Mqtt.push("6e559b/PONG","OK")
+                            Mqtt.pushID("PONG", "OK")
+                            print("DOWNLOAD")
+                            downloadModel('main.py', 'yolo', SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:], True)
+                            print("reset")
+                            #time.sleep(1)
+                            import machine
+                            os.sync()
+                            machine.reset()
+                        if SUBSCRIBE_MSG[2].find("_RESET") == 0:
+                            # Mqtt.push("6e559b/PONG","OK")
+                            Mqtt.pushID("PONG", "OK")
+                            print("reset")
+                            import machine
+                            machine.reset()
+                        if SUBSCRIBE_MSG[2].find("_TAKEPIC_YOLO/") == 0:
+                            # Mqtt.push("6e559b/PONG","OK")
+                            Mqtt.pushID("PONG", "OK")
+                            print("_TAKEPIC_YOLO")
+                        if SUBSCRIBE_MSG[2].find("_TAKEPIC_MOBILENET/") == 0:
+                            # Mqtt.push("6e559b/PONG","OK")
+                            Mqtt.pushID("PONG", "OK")
+                            mqttJsonData = ujson.loads(
+                                SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+                            tackMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'], False, mqttJsonData['url'], mqttJsonData['hashKey'])
+                        if SUBSCRIBE_MSG[2].find("_DOWNLOAD_MODEL/") == 0:
+                            # Mqtt.push("6e559b/PONG","OK")
+                            Mqtt.pushID("PONG", "OK")
+                            mqttJsonData = ujson.loads(
+                                SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+                            downloadModel(mqttJsonData['fileName'], mqttJsonData['modelType'], mqttJsonData['url'])
+                        if SUBSCRIBE_MSG[2].find("_DOWNLOAD_FILE/") == 0:
+                            # Mqtt.push("6e559b/PONG","OK")
+                            Mqtt.pushID("PONG", "OK")
+                            mqttJsonData = ujson.loads(
+                                SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+                            downloadModel(mqttJsonData['fileName'], 'yolo', mqttJsonData['url'], True)
+                        SYSTEM_WiFiCheckCount = -1
+                        print("blockly:",SYSTEM_WiFiCheckCount)
+                    if SYSTEM_THREAD_MQTT_FLAG == True:
+                        if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1]) != None:
+                            print("user topic:",SUBSCRIBE_MSG[2])
+                            SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]] = SUBSCRIBE_MSG[2]
+                        else:
+                            print("error topic")
+            except Exception as e:
+                print(e)
+                print("MQTT_CALLBACK read error")
+            SYSTEM_LOG_UART.start()
+
             while SYSTEM_LOG_UART.any():
-                myLine = SYSTEM_LOG_UART.readline()
-                print(myLine)
-                SUBSCRIBE_MSG = myLine.decode().strip()
-                if "mqtt" in SUBSCRIBE_MSG[0:4]:
-                    SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
-            if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
-                if SUBSCRIBE_MSG[1] == SYSTEM_ESP_DEVICE_ID+"/PING":
-                    if SUBSCRIBE_MSG[2].find("_DEPLOY/") == 0:
-                        # Mqtt.push("6e559b/PONG","OK")
-                        Mqtt.pushID("PONG", "OK")
-                        print("DOWNLOAD")
-                        downloadModel('main.py', 'yolo', SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:], True)
-                        print("reset")
-                        #time.sleep(1)
-                        import machine
-                        os.sync()
-                        machine.reset()
-                    if SUBSCRIBE_MSG[2].find("_RESET") == 0:
-                        # Mqtt.push("6e559b/PONG","OK")
-                        Mqtt.pushID("PONG", "OK")
-                        print("reset")
-                        import machine
-                        machine.reset()
-                    if SUBSCRIBE_MSG[2].find("_TAKEPIC_YOLO/") == 0:
-                        # Mqtt.push("6e559b/PONG","OK")
-                        Mqtt.pushID("PONG", "OK")
-                        print("_TAKEPIC_YOLO")
-                    if SUBSCRIBE_MSG[2].find("_TAKEPIC_MOBILENET/") == 0:
-                        # Mqtt.push("6e559b/PONG","OK")
-                        Mqtt.pushID("PONG", "OK")
-                        mqttJsonData = ujson.loads(
-                            SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-                        tackMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'], False, mqttJsonData['url'], mqttJsonData['hashKey'])
-                    if SUBSCRIBE_MSG[2].find("_DOWNLOAD_MODEL/") == 0:
-                        # Mqtt.push("6e559b/PONG","OK")
-                        Mqtt.pushID("PONG", "OK")
-                        mqttJsonData = ujson.loads(
-                            SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-                        downloadModel(mqttJsonData['fileName'], mqttJsonData['modelType'], mqttJsonData['url'])
-                    if SUBSCRIBE_MSG[2].find("_DOWNLOAD_FILE/") == 0:
-                        # Mqtt.push("6e559b/PONG","OK")
-                        Mqtt.pushID("PONG", "OK")
-                        mqttJsonData = ujson.loads(
-                            SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-                        downloadModel(mqttJsonData['fileName'], 'yolo', mqttJsonData['url'], True)
-                    SYSTEM_WiFiCheckCount = -1
-                    print("blockly:",SYSTEM_WiFiCheckCount)
-
-                if SYSTEM_THREAD_MQTT_FLAG == True:
-                    if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1]) != None:
-                        SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]] = SUBSCRIBE_MSG[2]
-                    else:
-                        print("error topic")
-        except Exception as e:
-            print(e)
-            print("MQTT_CALLBACK read error")
-        SYSTEM_LOG_UART.start()
-
-        while SYSTEM_LOG_UART.any():
-            SYSTEM_LOG_UART.readline()
+                SYSTEM_LOG_UART.readline()
     # from webai_api import function
+    SYSTEM_MQTT_CALLBACK_FLAG = True
     SYSTEM_THREAD_MQTT_FLAG = False
     SYSTEM_THREAD_MQTT_MSG = {}
     SYSTEM_MQTT_TOPIC = {}
@@ -508,6 +528,7 @@ class Speaker:
 
 class ObjectTracking():
     import KPU as kpu
+    import sensor
     def showMessage(self,msg):
         print(msg)
         lcd.clear()
@@ -515,20 +536,19 @@ class ObjectTracking():
         
     def __init__(self,flip=0,classes=[],model=None,threshold=0.1,nms_value=0.1,w=320,h=224):
         try:
-            import sensor
             lcd.init()    
             showMessage("init camera")
-            sensor.reset()
-            sensor.set_pixformat(sensor.RGB565)
-            sensor.set_framesize(sensor.QVGA)
-            sensor.set_windowing((w, h))
-            sensor.set_vflip(flip)
-            sensor.set_auto_gain(1)
-            sensor.set_auto_whitebal(1)
-            sensor.set_auto_exposure(1)
-            sensor.set_brightness(3)
-            sensor.skip_frames(time = 2000)
-            sensor.run(1)
+            self.sensor.reset()
+            self.sensor.set_pixformat(self.sensor.RGB565)
+            self.sensor.set_framesize(self.sensor.QVGA)
+            self.sensor.set_windowing((w, h))
+            self.sensor.set_vflip(flip)
+            self.sensor.set_auto_gain(1)
+            self.sensor.set_auto_whitebal(1)
+            self.sensor.set_auto_exposure(1)
+            self.sensor.set_brightness(3)
+            self.sensor.skip_frames(time = 2000)
+            self.sensor.run(1)
         except Exception as e:
             print(e)
             showMessage("camera error")                        
@@ -545,9 +565,9 @@ class ObjectTracking():
                 model="/sd/"+model+".kmodel"
             self.classes=classes
             showMessage("load model")
-            self.task = kpu.load(model)
+            self.task = self.kpu.load(model)
             self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
-            kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
+            self.kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
             showMessage("init finish")
         except Exception as e:
             print(e)
@@ -556,8 +576,8 @@ class ObjectTracking():
     def checkObjects(self):
         try:
             self.classesArr=[]
-            img = sensor.snapshot()        
-            code = kpu.run_yolo2(self.task, img)
+            img = self.sensor.snapshot()        
+            code = self.kpu.run_yolo2(self.task, img)
             if code:
                 for i in code:
                     img.draw_rectangle(i.rect())
@@ -583,31 +603,32 @@ class ObjectTracking():
         return returnArr
 
     def __del__(self):
-        kpu.deinit(self.task)
+        self.kpu.deinit(self.task)
         gc.collect()
 
 class ImageClassification():
     import KPU as kpu
+    import sensor
     def showMessage(self,msg):
         print(msg)
         lcd.clear()
         lcd.draw_string(int(311-len(msg)*6.9)//2,224//2,msg,lcd.WHITE)
         
-    def __init__(self,flip=0,classes=[],model=None,threshold=0.1,nms_value=0.1):
+    def __init__(self,flip=0,classes=[],model=None,w=224,h=224):
         try:
             lcd.init()
             showMessage("init camera")
-            sensor.reset()
-            sensor.set_pixformat(sensor.RGB565)
-            sensor.set_framesize(sensor.QVGA)
-            sensor.set_windowing((224, 224))
-            sensor.set_vflip(flip)
-            sensor.set_auto_gain(1)
-            sensor.set_auto_whitebal(1)
-            sensor.set_auto_exposure(1)
-            sensor.set_brightness(3)
-            sensor.skip_frames(time = 2000)
-            sensor.run(1)
+            self.sensor.reset()
+            self.sensor.set_pixformat(self.sensor.RGB565)
+            self.sensor.set_framesize(self.sensor.QVGA)
+            self.sensor.set_windowing((w, h))
+            self.sensor.set_vflip(flip)
+            self.sensor.set_auto_gain(1)
+            self.sensor.set_auto_whitebal(1)
+            self.sensor.set_auto_exposure(1)
+            self.sensor.set_brightness(3)
+            self.sensor.skip_frames(time = 2000)
+            self.sensor.run(1)
         except Exception as e:
             print(e)
             showMessage("camera error")
@@ -624,7 +645,7 @@ class ImageClassification():
                 model="/sd/"+model+".kmodel"
             self.classes=classes
             showMessage("load model")
-            self.task = kpu.load(model)
+            self.task = self.kpu.load(model)
             showMessage("init finish")
         except Exception as e:
             print(e)
@@ -633,8 +654,8 @@ class ImageClassification():
     def checkClass(self):
         try:
             self.classesArr=[]
-            img = sensor.snapshot()
-            fmap = kpu.forward(self.task, img)
+            img = self.sensor.snapshot()
+            fmap = self.kpu.forward(self.task, img)
             plist=fmap[:]
             pmax=max(plist)
             #print(pmax)
@@ -656,7 +677,7 @@ class ImageClassification():
         # try:
         #     self.classesArr=[]
         #     img = sensor.snapshot()
-        #     code = kpu.run_yolo2(self.task, img)
+        #     code = self.kpu.run_yolo2(self.task, img)
         #     img=img.resize(224,224)
         #     if code:
         #         for i in code:
@@ -683,7 +704,7 @@ class ImageClassification():
             return []
             
     def __del__(self):
-        kpu.deinit(self.task)
+        self.kpu.deinit(self.task)
         gc.collect()
 
 class Network:
@@ -732,8 +753,9 @@ class Network:
 class Mqtt:
     # def __init__(self):
     #     pass
-
     def sub(topic):
+        global SYSTEM_THREAD_MQTT_FLAG
+        SYSTEM_THREAD_MQTT_FLAG=True
         print("subscribe topic ...")
         mqttSetSub = 'AT+MQTT="sub","{topic}"'.format(topic=topic)
         print(mqttSetSub)
@@ -743,11 +765,13 @@ class Mqtt:
 
     def push(topic, msg):
         mqttSetPush = 'AT+MQTT="push","{topic}","{msg}"'.format(topic=topic, msg=msg)
-        print(mqttSetPush)
+        # print(mqttSetPush)
         commCycle(mqttSetPush)
         time.sleep(0.15)
 
     def subID(topic):
+        global SYSTEM_THREAD_MQTT_FLAG
+        SYSTEM_THREAD_MQTT_FLAG=True
         print("subscribeID topic ...")
         mqttSetSub = 'AT+MQTT="sub","{mqttUID}/{topic}"'.format(mqttUID=SYSTEM_ESP_DEVICE_ID, topic=topic)
         print(mqttSetSub)
@@ -757,7 +781,7 @@ class Mqtt:
 
     def pushID(topic, msg):
         mqttSetPush = 'AT+MQTT="push","{mqttUID}/{topic}","{msg}"'.format(mqttUID=SYSTEM_ESP_DEVICE_ID, topic=topic, msg=msg)
-        print(mqttSetPush)
+        # print(mqttSetPush)
         commCycle(mqttSetPush)
         time.sleep(0.15)
 
@@ -788,12 +812,6 @@ class Mqtt:
 def commCycle(command, timeout=5000):
     SYSTEM_AT_UART.write(command + '\r\n')
     myLine = ''
-    # while  not  "OK" in myLine:
-    #     while not SYSTEM_AT_UART.any():
-    #         pass
-    #     myLine = SYSTEM_AT_UART.readline()
-    #     print(myLine)
-
     startTime = time.ticks_ms()
     ifdata = True
     try:
@@ -829,21 +847,7 @@ def commCycle(command, timeout=5000):
         print(e)
 
 
-def readUID(timeout=2000):  # This controls one command exection cycle.
-    # SYSTEM_AT_UART.write('AT+SYSUID' + '\r\n')
-    # myLine = ''
-    # respUID = ''
-    # while  not  "OK" in myLine:
-    #     while not SYSTEM_AT_UART.any():
-    #         pass
-    #     myLine = SYSTEM_AT_UART.readline()
-    #     print(myLine)
-    #     if "unique id" in myLine:
-    #         myLine=myLine.strip().decode()
-    #         #print(myLine[10:])
-    #         respUID=myLine[10:]
-    # return respUID
-
+def readUID(timeout=2000):
     myLine = ''
     respUID = ''
     startTime = time.ticks_ms()
@@ -900,21 +904,5 @@ def showMessage(msg, x=-1, y=0, center=True, clear=False):
 
 def printVal():
     print(globals())
-
-def getVal(val):
-    if val in globals():
-        return globals()[val]
-    else:
-        return None
-def setVal(name,val):
-    if name in globals():
-        name=val
-    else:
-        return None
-# lcd.init()
-# fm.register(board_info.ESP_UART0RX, fm.fpioa.UART2_TX, force=True)
-# fm.register(board_info.ESP_UART0TX, fm.fpioa.UART2_RX, force=True)
-
-# #SYSTEM_AT_UART = UART(UART.UART2, 115200*5, 8, 2, 2, timeout=5000, read_buf_len=40960)
-# SYSTEM_AT_UART = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
+    
 print("load blockly finish")
