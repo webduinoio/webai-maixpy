@@ -120,32 +120,23 @@ menu "Micropython configurations"
 		config MAIXPY_BUILTIN_PY_FPIOA_MANAGER
 			bool "Enable builtin py module fpioa_manager"
 			default y
-		config MAIXPY_BUILTIN_PY_BOARD_SENSOR
-			bool "Enable builtin py module board_sensor"
-			default y
-		config MAIXPY_BUILTIN_PY_EXTEND_SENSOR
-			bool "Enable builtin py module extend_sensor"
-			default y
-		config MAIXPY_BUILTIN_PY_GIGO_SENSOR
-			bool "Enable builtin py module gigo_sensor"
-			default y
-		config MAIXPY_BUILTIN_PY_BOARD_NETWORK
-			bool "Enable builtin py module board_network"
-			default y
-		config MAIXPY_BUILTIN_PY_BOARD_KPU
-			bool "Enable builtin py module board_kpu"
-			default y
-		config MAIXPY_BUILTIN_PY_QRCODE_EXEC
-			bool "Enable builtin py module qrcode_exec"
-			default y
 		config MAIXPY_BUILTIN_PY_UREQUESTS
 			bool "Enable builtin py module urequests"
 			default y
 		config MAIXPY_BUILTIN_PY_MICROWEBCLI
 			bool "Enable builtin py module microWebCli"
 			default y
-		config MAIXPY_BUILTIN_PY_SYSTEM_VAR
-			bool "Enable builtin py module system_var"
+		config MAIXPY_BUILTIN_PY_WEBAI_BLOCKLY
+			bool "Enable builtin py module webai_blockly"
+			default y
+		config MAIXPY_BUILTIN_PY_WEBAI_API
+			bool "Enable builtin py module webai_api"
+			default y
+		config MAIXPY_BUILTIN_PY_WEBAI_EXT
+			bool "Enable builtin py module webai_ext"
+			default y
+		config MAIXPY_BUILTIN_PY_GIGO_BLOCKLY
+			bool "Enable builtin py module gigo_blockly"
 			default y
 	endmenu
 
