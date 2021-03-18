@@ -1,4 +1,8 @@
-import os, sys, time,gc
+import os
+import sys
+import time
+import gc
+gc.enable()
 sys.path.append('')
 sys.path.append('.')
 
@@ -11,9 +15,15 @@ else:
     os.chdir("/flash")
 sys.path.append('/flash')
 del devices
-print("[MaixPy] init end") # for IDE
+print("[MaixPy] init end")  # for IDE
+print("_boot init end")
+# from machine import WDT
+# def on_wdt(self):
+#     print(self.context(), self)
+#     self.feed()
+# wdt1 = WDT(id=0, timeout=4000, callback=on_wdt, context={})
 for i in range(200):
-    time.sleep_ms(1) # wait for key interrupt(for maixpy ide)
+    time.sleep_ms(1)  # wait for key interrupt(for maixpy ide)
 del i
 
 # check IDE mode
@@ -40,16 +50,13 @@ del ide, ide_mode_conf
 
 boot_py = '''
 try:
+    from board import board_info
     print(globals())
     import webai_blockly
-    from board import board_info
     import time,network,ujson,lcd
     from machine import Timer
-    # from Maix import GPIO
-    from fpioa_manager import fm
     from webai_blockly import showMessage
     print(globals())
-    # webai_blockly.SYSTEM_WiFiCheckCount=7
     def timerCount(timer):
         if webai_blockly.SYSTEM_WiFiCheckCount<0:
             timer.stop()
@@ -57,17 +64,9 @@ try:
         webai_blockly.SYSTEM_WiFiCheckCount-=1
         print("timer:",webai_blockly.SYSTEM_WiFiCheckCount)
     tim = Timer(Timer.TIMER0, Timer.CHANNEL0, mode=Timer.MODE_PERIODIC, period=1, unit=Timer.UNIT_S, callback=timerCount, arg=timerCount, start=False, priority=1, div=0)
-    # pinA=7#A
-    # fm.fpioa.set_function(pinA,fm.fpioa.GPIO7)
-    # webai_blockly.SYSTEM_BTN_L=GPIO(GPIO.GPIO7,GPIO.IN)
-    # pinB=16#B
-    # fm.fpioa.set_function(pinB,fm.fpioa.GPIO6)
-    # webai_blockly.SYSTEM_BTN_R=GPIO(GPIO.GPIO6,GPIO.IN)
     lcd.init()
     lcd.clear()
-    K210_VERSION=os.uname()
-    showMessage("k210 ver:"+K210_VERSION[5]+" (lite)",x=-1,y=5,center=False,clear=False)
-    del K210_VERSION
+    showMessage("k210 ver:"+webai_blockly.SYSTEM_K210_VERSION[5]+" (lite)",x=-1,y=5,center=False,clear=False)
     showMessage("deviceID:"+webai_blockly.SYSTEM_ESP_DEVICE_ID,x=-1,y=1,center=False,clear=False)
     showMessage("WiFi checking...",x=-1,y=4,center=False,clear=False)
     WIFI_SSID = ""
@@ -178,18 +177,9 @@ try:
                         showMessage("setting WiFi...",clear=True)
                         from webai_api import setWiFi
                         setWiFi(qrcodeData['ssid'],qrcodeData['password'])
-                #except KeyboardInterrupt as e:
-                    #lcd.clear()
-                    #print(e)
-                    #print("KeyboardInterrupt exit")
-                    #sys.exit()
                 except Exception as e:
                     print(e)
                     print("format error")
-
-                #print(res[0].corners())
-                #print(res[0].rect())
-
             lcd.display(img)
             if webai_blockly.SYSTEM_BTN_L.value()==0:
                 qrcodeMode=False
@@ -277,7 +267,7 @@ if "cover.boot.py" in sd_ls:
         with open("/flash/boot.py") as f:
             code0 = f.read()
     with open("/sd/cover.boot.py") as f:
-        code=f.read()
+        code = f.read()
     if code0 != code:
         with open("/flash/boot.py", "w") as f:
             f.write(code)
@@ -330,6 +320,6 @@ del banner
 from webai_blockly import Blockly_Init
 Blockly_Init()
 print("_boot init end")
-# for i in range(200):
-#     time.sleep_ms(1) # wait for key interrupt(for webAI tool)
-# del i
+for i in range(200):
+    time.sleep_ms(1) # wait for key interrupt(for webAI tool)
+del i
