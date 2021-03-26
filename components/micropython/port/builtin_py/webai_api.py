@@ -8,9 +8,19 @@ def setWiFi(ssid,pwd):
         # print(jsDumps)
         f.write(obj)
     machine.reset()
+def saveQRCode(url):
+    import machine,os,ujson
+    with open('/flash/cmd.txt','w') as f:
+        # _DOWNLOAD_FILE/
+
+        qrcodeData={"fileName":"cmd.py","url":"{url}".format(url=url)}
+        f.write("_DOWNLOAD_FILE/"+ujson.dumps(qrcodeData))
+    os.sync()
+    print("reset")
+    machine.reset()
 def tackYoloPic():
     print("b")
-def tackMobileNetPic(dsname,count,cameraFlip,url,hashKey):
+def takeMobileNetPic(dsname,count,cameraFlip,url,hashKey):
     import sensor,image,lcd,time,math
     from fpioa_manager import *
     from Maix import GPIO
@@ -26,7 +36,7 @@ def tackMobileNetPic(dsname,count,cameraFlip,url,hashKey):
     sensor.set_windowing((224, 224))
     sensor.skip_frames(time = 2000)
 
-    sensor.set_vflip(0)
+    sensor.set_vflip(cameraFlip)
 
     sensor.set_auto_gain(1)
     sensor.set_auto_whitebal(1)
@@ -54,15 +64,26 @@ def tackMobileNetPic(dsname,count,cameraFlip,url,hashKey):
         del listFile
     except Exception as e:
         print(e)
-    tackPicMode=True
-    while tackPicMode:
+    takePicMode=True
+    while takePicMode:
         img = sensor.snapshot()
         img.draw_string(0,0,"take:"+str(countTmp))
         # img.draw_rectangle(40,40,224,224,(255,255,255),2,False)
         # img.draw_rectangle(0,0,224,224,(255,255,255),2,False)
         img.draw_rectangle(40,40,144,144,(255,255,255),2,False)
         img.draw_cross(224//2,224//2,size=10,thickness=3)
-
+        if countTmp==picCount:
+            bak = time.ticks()
+            uploadStatus=uploadPic(dsname,count,url,hashKey)
+            if uploadStatus==True:
+                print("status:OK")
+                showMessage("ok",clear=True)
+                showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+            else:
+                print("status:error")
+                # showMessage("error",clear=True)
+                showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+            break
         if(webai_blockly.SYSTEM_BTN_L.value()==0):
             showMessage("wait save",clear=True)
             img = sensor.snapshot()
@@ -70,42 +91,35 @@ def tackMobileNetPic(dsname,count,cameraFlip,url,hashKey):
             countTmp+=1
             # time.sleep(0.5)
             lcd.clear(lcd.BLACK)
-        if(webai_blockly.SYSTEM_BTN_R.value()==0):
-            sensor.set_windowing((320, 224))
-            break
-        if countTmp==picCount:
-            msg="press L Upload             press R Back"
-            lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
-            while 1:
-                if(webai_blockly.SYSTEM_BTN_L.value()==0):
-                    # time.sleep(1)
-                    bak = time.ticks()
-                    uploadStatus=uploadPic(dsname,count,url,hashKey)
-                    if uploadStatus==True:
-                        print("status:OK")
-                        showMessage("ok",clear=True)
-                        showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
-                        msg="                            press R Back"
-                        lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
-                        while 1:
-                            if(webai_blockly.SYSTEM_BTN_R.value()==0):
-                                tackPicMode=False
-                                sensor.set_windowing((320, 224))
-                                # time.sleep(0.5)
-                                break
-                    else:
-                        print("status:error")
-                        # showMessage("error",clear=True)
-                        showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
-                    break
-                if(webai_blockly.SYSTEM_BTN_R.value()==0):
-                    tackPicMode=False
-                    sensor.set_windowing((320, 224))
-                    break
-        else:
-            lcd.display(img)
-            msg="press L Take                press R Back"
-            lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
+        elif(webai_blockly.SYSTEM_BTN_R.value()==0):
+            # time.sleep(1)
+            if countTmp==0:
+                showMessage("please take a picture!",clear=True)
+                time.sleep(2)
+            else:
+                bak = time.ticks()
+                uploadStatus=uploadPic(dsname,countTmp,url,hashKey)
+                if uploadStatus==True:
+                    print("status:OK")
+                    showMessage("ok",clear=True)
+                    showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+                    # takePicMode=False
+                    # msg="                            press R Back"
+                    # lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
+                    # while 1:
+                    #     if(webai_blockly.SYSTEM_BTN_R.value()==0):
+                    #         takePicMode=False
+                    #         sensor.set_windowing((320, 224))
+                    #         # time.sleep(0.5)
+                    #         break
+                else:
+                    print("status:error")
+                    # showMessage("error",clear=True)
+                    showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+                break
+        lcd.display(img)
+        msg="press L Take              press R Upload"
+        lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
 
 def downloadModel(fileName,modelType,url,isFile=False):
     # global webai_blockly.SYSTEM_AT_UART
@@ -265,12 +279,12 @@ def downloadModel(fileName,modelType,url,isFile=False):
         #print(myLine)
     #global uart3
     #uart3=webai_blockly.SYSTEM_AT_UART
-
-    speed = 115200*40
-    commCycle("AT+UART_CUR="+str(speed)+",8,1,0,0")
-    time.sleep(0.5)
-    webai_blockly.SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
     showMessage("wait init",clear=True)
+    if fileName!="main.py":
+        speed = 115200*40
+        commCycle("AT+UART_CUR="+str(speed)+",8,1,0,0")
+        time.sleep(0.5)
+        webai_blockly.SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
     WIFI_SSID = ""
     WIFI_PASW = ""
     onlineStatus=True
@@ -338,7 +352,9 @@ def downloadModel(fileName,modelType,url,isFile=False):
         if onlineStatus == True:
             if webai_blockly.SYSTEM_DEFAULT_PATH=="flash":
                 if isFile==True:
+                    print("openfile 1")
                     saveFile=open('/flash/'+fileName,'w')
+                    print("openfile 2")
                 else:
                     from Maix import utils
             else:
@@ -355,9 +371,12 @@ def downloadModel(fileName,modelType,url,isFile=False):
             while True:
                 try:
                     if tmp.raw is None:
-                        tmp.connect(url, 2)
+                        print("connect 1")
+                        tmp.connect(url, 10)
+                        print("connect 2")
                     else:
                         if filesize == 0:
+                            print("connect 3")
                             res = tmp.request(b"HEAD", {b'Connection': b'keep-alive'})
                             print(res)
                             if res[0] == 200:
@@ -450,15 +469,36 @@ def downloadModel(fileName,modelType,url,isFile=False):
                 print(e)
                 print("http close error")
         if downloadStatus==True and isFile==True and fileName=="main.py":
-            showMessage("rebooting ...",clear=True)
+            pass
+            # showMessage("rebooting ...",clear=True)
         else:
             print("reset speed")
             # print("uid:"+readUID(webai_blockly.SYSTEM_AT_UART))
             while webai_blockly.SYSTEM_AT_UART.any():
                 webai_blockly.SYSTEM_AT_UART.readline()
             time.sleep(1)
-            speed = 115200*1
+            speed = 115200
             commCycle("AT+UART_CUR="+str(speed)+",8,1,0,0")
+
+            # webai_blockly.SYSTEM_LOG_UART = UART(UART.UART3, 115200, timeout=5000,read_buf_len=10240, callback=webai_blockly.MQTT_CALLBACK)
+
+            # myLine=""
+            # while  not  "delete" in myLine:
+            #     while not webai_blockly.SYSTEM_LOG_UART.any():
+            #         pass
+            #     myLine = webai_blockly.SYSTEM_LOG_UART.readline()
+            #     print(myLine)
+            # webai_blockly.SYSTEM_LOG_UART.deinit()
+            # gc.collect()
+            # print("deinit log uart")
+            # print("sleep 5")
+            # time.sleep(5)
+            # webai_blockly.SYSTEM_LOG_UART = UART(UART.UART3, 115200, timeout=5000,read_buf_len=10240, callback=webai_blockly.MQTT_CALLBACK)
+
+
+            # while 1:
+            #     while webai_blockly.SYSTEM_LOG_UART.any():
+            #         print(webai_blockly.SYSTEM_LOG_UART.readline())
             #webai_blockly.SYSTEM_AT_UART.write("AT+UART_CUR="+str(speed)+",8,1,0,0"+"\r\n")    # Version
             #myLine = ''
             #while not "OK" in myLine:
@@ -471,21 +511,91 @@ def downloadModel(fileName,modelType,url,isFile=False):
                 showMessage("ok",clear=True)
             else:
                 showMessage("error",clear=True)
-            msg="                            press R Back"
-            lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
-            while 1:
-                if(webai_blockly.SYSTEM_BTN_R.value()==0):
-                    break
+            showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+            # msg="                            press R Back"
+            # lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
+            # while 1:
+            #     if(webai_blockly.SYSTEM_BTN_R.value()==0):
+            #         break
             print(filename, filesize, round(time.time() - start, 1), 'over')
             print('total time ', time.ticks() - bak)
 
-# def tackMobileNetPic(webai_blockly.SYSTEM_DEFAULT_PATH,webai_blockly.SYSTEM_BTN_L,webai_blockly.SYSTEM_BTN_R,dsname,count,cameraFlip,url,hashKey):
+def downloadFile(fileName,url):
+    from fpioa_manager import fm
+    from Maix import GPIO
+    import gc,time,os
+    from webai_blockly import showMessage
+    import network    
+    from microWebCli import MicroWebCli
+    showMessage("wait init",clear=True)
+    fm.register(19, fm.fpioa.GPIOHS0)
+    wifiStatusPin = GPIO(GPIO.GPIOHS0, GPIO.IN)
+    WIFI_SSID = ""
+    WIFI_PASW = ""
+    onlineStatus=True
+    import ujson
+    try:
+        with open('/flash/wifi.json','r') as f:
+            jsDumps = ujson.load(f)
+            print(jsDumps)
+            WIFI_SSID=jsDumps['ssid']
+            WIFI_PASW=jsDumps['pwd']
+            del jsDumps
+        del f
+    except Exception as e:
+        print(e)
+        print("not setting wifi")
+        onlineStatus=False
+    if onlineStatus==True:
+        # wlan = ""
+        # err = ""
+        wlan = network.ESP8285(webai_blockly.SYSTEM_AT_UART)
+        err = 0
+        while 1:
+            try:
+                wlan.connect(WIFI_SSID, WIFI_PASW)
+            except Exception:
+                err += 1
+                print("Connect AP failed, now try again")
+                if err > 1:
+                    break
+                #raise Exception("Conenct AP fail")
+                continue
+            break
+    onlineCheck = 0
+    offlineCheck = 0
+    print("start check")
+    while onlineCheck < 2:
+        if wifiStatusPin.value() == 0:
+            print("offline")
+            offlineCheck+=1
+            if offlineCheck > 2:
+                showMessage("init error",clear=True)
+                onlineStatus=False
+                #sys.exit()
+        else:
+            print("online")
+            onlineCheck += 1
+        time.sleep(0.5)
+    print("end")
+    # bak = time.ticks()
+    start = time.time()
+    print('start', start)
+    from microWebCli import MicroWebCli
+    def progressCallback(microWebCli, progressSize, totalSize) :
+        if totalSize :
+            print('Progress: %d bytes of %d downloaded...' % (progressSize, totalSize))
+        else :
+            print('Progress: %d bytes downloaded...' % progressSize)
+    contentType = MicroWebCli.FileRequest(url, "/"+webai_blockly.SYSTEM_DEFAULT_PATH+"/"+fileName, progressCallback)
+    print('File of content type "%s" was saved to "%s"' % (contentType, fileName))
+    os.sync()
 
 def uploadPic(dsname,count,url,hashKey):
     from fpioa_manager import fm
     from Maix import GPIO
     import gc,time
-    from webai_blockly import showMessage,lcd
+    from webai_blockly import showMessage
     import network    
     from microWebCli import MicroWebCli
     showMessage("wait init",clear=True)
