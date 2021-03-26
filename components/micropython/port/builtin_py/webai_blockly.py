@@ -1,13 +1,13 @@
 import gc
 import time
 import os
-import ujson
 import sys
 import lcd
 from fpioa_manager import fm
 from Maix import GPIO
 from board import board_info
 from machine import UART,Timer,PWM
+import _thread
 
 def Blockly_Init():
     global USER_PWM_LIST
@@ -15,6 +15,17 @@ def Blockly_Init():
     global SYSTEM_K210_VERSION, SYSTEM_BTN_L, SYSTEM_BTN_R, SYSTEM_AT_UART, SYSTEM_ESP_VERSION, SYSTEM_ESP_DEVICE_ID, SYSTEM_DEFAULT_PATH, SYSTEM_MQTT_CALLBACK_FLAG, SYSTEM_THREAD_MQTT_FLAG, SYSTEM_THREAD_MQTT_MSG, SYSTEM_MQTT_TOPIC, SYSTEM_LOG_UART
     global SYSTEM_WLAN, SYSTEM_WiFiInfo,SYSTEM_WiFiCheckCount
     global fpioaMapGPIO
+    global SYSTEM_THREAD_START_LIST,SYSTEM_THREAD_STOP_LIST
+    SYSTEM_THREAD_START_LIST=[]
+    SYSTEM_THREAD_STOP_LIST=[]
+
+
+    global SYSTEM_TEST
+    SYSTEM_TEST=False
+    # SYSTEM_TEST_MSG=""
+    global a_lock
+    a_lock = _thread.allocate_lock()
+
     fpioaMapGPIO={
 '0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
 '1':[board_info.P1,fm.fpioa.GPIOHS1,GPIO.GPIOHS1],
@@ -106,81 +117,107 @@ def Blockly_Init():
     gc.collect()
     # from board import board_info
 
-    def MQTT_CALLBACK(uartObj):
-        if SYSTEM_MQTT_CALLBACK_FLAG==True:
-            SYSTEM_LOG_UART.stop()
-            from webai_api import downloadModel,tackMobileNetPic
-            SUBSCRIBE_MSG = None
-            global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC
-            try:
-                while SYSTEM_LOG_UART.any():
-                    myLine = SYSTEM_LOG_UART.readline()
-                    # print(myLine)
-                    SUBSCRIBE_MSG = myLine.decode().strip()
-                    if "mqtt" in SUBSCRIBE_MSG[0:4]:
-                        SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
-                if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
-                    if SUBSCRIBE_MSG[1] == SYSTEM_ESP_DEVICE_ID+"/PING":
-                        if SUBSCRIBE_MSG[2].find("_DEPLOY/") == 0:
-                            # Mqtt.push("6e559b/PONG","OK")
-                            Mqtt.pushID("PONG", "OK")
-                            print("DOWNLOAD")
-                            downloadModel('main.py', 'yolo', SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:], True)
-                            print("reset")
-                            #time.sleep(1)
-                            import machine
-                            os.sync()
-                            machine.reset()
-                        if SUBSCRIBE_MSG[2].find("_RESET") == 0:
-                            # Mqtt.push("6e559b/PONG","OK")
-                            Mqtt.pushID("PONG", "OK")
-                            print("reset")
-                            import machine
-                            machine.reset()
-                        if SUBSCRIBE_MSG[2].find("_TAKEPIC_YOLO/") == 0:
-                            # Mqtt.push("6e559b/PONG","OK")
-                            Mqtt.pushID("PONG", "OK")
-                            print("_TAKEPIC_YOLO")
-                        if SUBSCRIBE_MSG[2].find("_TAKEPIC_MOBILENET/") == 0:
-                            # Mqtt.push("6e559b/PONG","OK")
-                            Mqtt.pushID("PONG", "OK")
-                            mqttJsonData = ujson.loads(
-                                SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-                            tackMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'], False, mqttJsonData['url'], mqttJsonData['hashKey'])
-                        if SUBSCRIBE_MSG[2].find("_DOWNLOAD_MODEL/") == 0:
-                            # Mqtt.push("6e559b/PONG","OK")
-                            Mqtt.pushID("PONG", "OK")
-                            mqttJsonData = ujson.loads(
-                                SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-                            downloadModel(mqttJsonData['fileName'], mqttJsonData['modelType'], mqttJsonData['url'])
-                        if SUBSCRIBE_MSG[2].find("_DOWNLOAD_FILE/") == 0:
-                            # Mqtt.push("6e559b/PONG","OK")
-                            Mqtt.pushID("PONG", "OK")
-                            mqttJsonData = ujson.loads(
-                                SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-                            downloadModel(mqttJsonData['fileName'], 'yolo', mqttJsonData['url'], True)
-                        SYSTEM_WiFiCheckCount = -1
-                        print("blockly:",SYSTEM_WiFiCheckCount)
-                    if SYSTEM_THREAD_MQTT_FLAG == True:
-                        if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1]) != None:
-                            print("user topic:",SUBSCRIBE_MSG[2])
-                            SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]] = SUBSCRIBE_MSG[2]
-                        else:
-                            print("error topic")
-            except Exception as e:
-                print(e)
-                print("MQTT_CALLBACK read error")
-            SYSTEM_LOG_UART.start()
+    # def MQTT_CALLBACK(uartObj):
+    #     if SYSTEM_MQTT_CALLBACK_FLAG==True:
+    #         SYSTEM_LOG_UART.stop()
+    #         # from webai_api import downloadModel,takeMobileNetPic
+    #         SUBSCRIBE_MSG = None
+    #         global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC
+    #         try:
+    #             while SYSTEM_LOG_UART.any():
+    #                 myLine = SYSTEM_LOG_UART.readline()
+    #                 # print(myLine)
+    #                 SUBSCRIBE_MSG = myLine.decode().strip()
+    #                 if "mqtt" in SUBSCRIBE_MSG[0:4]:
+    #                     SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
+    #             if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
+    #                 if SUBSCRIBE_MSG[1] == SYSTEM_ESP_DEVICE_ID+"/PING":
+    #                     resetFlag=True
+    #                     if SUBSCRIBE_MSG[2].find("_DEPLOY/") == 0:
+    #                         pass
+    #                         # Mqtt.push("6e559b/PONG","OK")
+                            
+    #                         # print("DOWNLOAD")
+    #                         # downloadModel('mqtt.main.py', 'yolo', SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:], True)
+    #                         # print("reset")
+    #                         #time.sleep(1)
+    #                     elif SUBSCRIBE_MSG[2].find("_RESET") == 0:
+    #                         # Mqtt.push("6e559b/PONG","OK")
+    #                         Mqtt.pushID("PONG", "OK")
+    #                         print("reset")
+    #                         import machine
+    #                         machine.reset()
+    #                     elif SUBSCRIBE_MSG[2].find("_TAKEPIC_YOLO/") == 0:
+    #                         # Mqtt.push("6e559b/PONG","OK")
+    #                         Mqtt.pushID("PONG", "OK")
+    #                         print("_TAKEPIC_YOLO")
+    #                         resetFlag=False
+    #                     elif SUBSCRIBE_MSG[2].find("_TAKEPIC_MOBILENET/") == 0:
+    #                         pass
+    #                         # Mqtt.push("6e559b/PONG","OK")
+    #                         # Mqtt.pushID("PONG", "OK")
+    #                         # mqttJsonData = ujson.loads(
+    #                         #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+    #                         # takeMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'], 1, mqttJsonData['url'], mqttJsonData['hashKey'])
+    #                         # with open('/flash/cmd.txt','w') as f:
+    #                         #     f.write(SUBSCRIBE_MSG[2])
+    #                         # os.sync()
+    #                         # import machine
+    #                         # machine.reset()
+    #                     elif SUBSCRIBE_MSG[2].find("_DOWNLOAD_MODEL/") == 0:
+    #                         pass
+    #                         # Mqtt.push("6e559b/PONG","OK")
+    #                         # Mqtt.pushID("PONG", "OK")
+    #                         # mqttJsonData = ujson.loads(
+    #                         #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+    #                         # downloadModel(mqttJsonData['fileName'], mqttJsonData['modelType'], mqttJsonData['url'])
+                            
+    #                     elif SUBSCRIBE_MSG[2].find("_DOWNLOAD_FILE/") == 0:
+    #                         pass
+    #                         # Mqtt.push("6e559b/PONG","OK")
+    #                         # Mqtt.pushID("PONG", "OK")
+    #                         # mqttJsonData = ujson.loads(
+    #                         #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+    #                         # downloadModel(mqttJsonData['fileName'], 'yolo', mqttJsonData['url'], True)
+    #                         # print("reset")
+    #                         #time.sleep(1)
+    #                         # import machine
+    #                         # os.sync()
+    #                         # machine.reset()
+    #                     else:
+    #                         resetFlag=False
+    #                         print("error command")
+    #                     if resetFlag:
+    #                         Mqtt.pushID("PONG", "OK")
+    #                         print("write cmd.txt")
+    #                         with open('/flash/cmd.txt','w') as f:
+    #                             f.write(SUBSCRIBE_MSG[2])
+    #                         os.sync()
+    #                         print("reset")
+    #                         import machine
+    #                         machine.reset()
+    #                     SYSTEM_WiFiCheckCount = -1
+    #                     print("blockly:",SYSTEM_WiFiCheckCount)
+    #                 elif SYSTEM_THREAD_MQTT_FLAG == True:
+    #                     if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1]) != None:
+    #                         print("user topic:",SUBSCRIBE_MSG[2])
+    #                         SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]] = SUBSCRIBE_MSG[2]
+    #                     else:
+    #                         print("error topic")
+    #         except Exception as e:
+    #             print(e)
+    #             print("MQTT_CALLBACK read error")
+    #         SYSTEM_LOG_UART.start()
 
-            while SYSTEM_LOG_UART.any():
-                SYSTEM_LOG_UART.readline()
+    #         while SYSTEM_LOG_UART.any():
+    #             SYSTEM_LOG_UART.readline()
     # from webai_api import function
     SYSTEM_MQTT_CALLBACK_FLAG = True
     SYSTEM_THREAD_MQTT_FLAG = False
     SYSTEM_THREAD_MQTT_MSG = {}
     SYSTEM_MQTT_TOPIC = {}
     fm.register(18, fm.fpioa.UART3_RX, force=True)
-    SYSTEM_LOG_UART = UART(UART.UART3, 115200*1, timeout=1000,read_buf_len=4096, callback=MQTT_CALLBACK)
+    SYSTEM_LOG_UART = UART(UART.UART3, 115200, timeout=5000,read_buf_len=10240, callback=MQTT_CALLBACK)
     try:
         print("init SYSTEM_LOG_UART")
         while SYSTEM_LOG_UART.any():
@@ -189,6 +226,184 @@ def Blockly_Init():
     except Exception as e:
         print(e)
         print("SYSTEM_LOG_UART error")
+
+
+def downloadtest(timer):
+# def downloadtest(cmd):
+    global SYSTEM_THREAD_START_LIST
+    while 1:
+        if SYSTEM_TEST:
+            # print("stop thread")
+
+            # for i in range(0,len(SYSTEM_THREAD_START_LIST)):
+            #     SYSTEM_THREAD_START_LIST[i]=0
+            # bak = time.ticks()
+            # print("check stop thread list",SYSTEM_THREAD_START_LIST)
+            # while 1:
+            #     if 1 in SYSTEM_THREAD_STOP_LIST:
+            #         # print(SYSTEM_THREAD_STOP_LIST)
+            #         print("wait stop",SYSTEM_THREAD_STOP_LIST)
+            #         time.sleep(0.25)
+            #     else:
+            #         print("stop all thread")
+            #         break
+            # print('total time ', time.ticks() - bak)
+
+            # print("sleep 2")
+            # time.sleep(2)
+            print("lock thread")
+            while not a_lock.acquire():
+                time.sleep(0.05)
+            print("sleep 1")
+            time.sleep(1)
+            print("write1 cmd.txt")
+            # with open('/flash/cmd.txt','w') as f:
+            #     print("write2 cmd.txt")
+            #     f.write(webai_blockly.SYSTEM_TEST_MSG)
+            #     print("write3 cmd.txt")
+            # print("write4 cmd.txt")
+            f=open('/flash/cmd.txt','w')
+            print("write2 cmd.txt")
+            f.write(timer.callback_arg())
+            # f.write(cmd)
+            print("write3 cmd.txt")
+            f.close()
+            print("write4 cmd.txt")
+            os.sync()
+            print("reset")
+            import machine
+            machine.reset()
+        print("wait callback")
+        time.sleep(0.1)
+
+
+
+def MQTT_CALLBACK(uartObj):
+    if SYSTEM_MQTT_CALLBACK_FLAG==True:
+        SYSTEM_LOG_UART.stop()
+        # from webai_api import downloadModel,takeMobileNetPic
+        SUBSCRIBE_MSG = None
+        startCallback=False
+        global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC,SYSTEM_THREAD_START_LIST
+        global SYSTEM_TEST
+        try:
+            while SYSTEM_LOG_UART.any():
+                myLine = SYSTEM_LOG_UART.readline()
+                # print(myLine)
+                SUBSCRIBE_MSG = myLine.decode().strip()
+                if "mqtt" in SUBSCRIBE_MSG[0:4]:
+                    SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
+            if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
+                if SUBSCRIBE_MSG[1] == SYSTEM_ESP_DEVICE_ID+"/PING":
+                    resetFlag=True
+                    if SUBSCRIBE_MSG[2].find("_DEPLOY/") == 0:
+                        startCallback=True
+                        # pass
+                        # resetFlag=False
+                        # Mqtt.push("6e559b/PONG","OK")
+                        
+                        # print("DOWNLOAD")
+                        # downloadModel('mqtt.main.py', 'yolo', SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:], True)
+                        # print("reset")
+                        #time.sleep(1)
+                        # SYSTEM_TEST_MSG=SUBSCRIBE_MSG[2]
+                        # SYSTEM_TEST=True
+                    elif SUBSCRIBE_MSG[2].find("_RESET") == 0:
+                        # Mqtt.push("6e559b/PONG","OK")
+                        Mqtt.pushID("PONG", "OK")
+                        print("reset")
+                        import machine
+                        machine.reset()
+                    elif SUBSCRIBE_MSG[2].find("_TAKEPIC_YOLO/") == 0:
+                        # Mqtt.push("6e559b/PONG","OK")
+                        Mqtt.pushID("PONG", "OK")
+                        print("_TAKEPIC_YOLO")
+                        resetFlag=False
+                    elif SUBSCRIBE_MSG[2].find("_TAKEPIC_MOBILENET/") == 0:
+                        startCallback=True
+                        # pass
+                        # Mqtt.push("6e559b/PONG","OK")
+                        # Mqtt.pushID("PONG", "OK")
+                        # mqttJsonData = ujson.loads(
+                        #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+                        # takeMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'], 1, mqttJsonData['url'], mqttJsonData['hashKey'])
+                        # with open('/flash/cmd.txt','w') as f:
+                        #     f.write(SUBSCRIBE_MSG[2])
+                        # os.sync()
+                        # import machine
+                        # machine.reset()
+                    elif SUBSCRIBE_MSG[2].find("_DOWNLOAD_MODEL/") == 0:
+                        startCallback=True
+                        # pass
+                        # Mqtt.push("6e559b/PONG","OK")
+                        # Mqtt.pushID("PONG", "OK")
+                        # mqttJsonData = ujson.loads(
+                        #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+                        # downloadModel(mqttJsonData['fileName'], mqttJsonData['modelType'], mqttJsonData['url'])
+                        
+                    elif SUBSCRIBE_MSG[2].find("_DOWNLOAD_FILE/") == 0:
+                        startCallback=True
+                        # pass
+                        # Mqtt.push("6e559b/PONG","OK")
+                        # Mqtt.pushID("PONG", "OK")
+                        # mqttJsonData = ujson.loads(
+                        #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
+                        # downloadModel(mqttJsonData['fileName'], 'yolo', mqttJsonData['url'], True)
+                        # print("reset")
+                        #time.sleep(1)
+                        # import machine
+                        # os.sync()
+                        # machine.reset()
+                    else:
+                        resetFlag=False
+                        print("error command")
+                    resetFlag=False
+                    # _thread.start_new_thread(downloadtest, (SUBSCRIBE_MSG[2],))
+                    # startCallback=True
+                    if resetFlag:
+                        print("stop thread")
+                        for i in range(0,len(SYSTEM_THREAD_START_LIST)):
+                            SYSTEM_THREAD_START_LIST[i]=0
+                        bak = time.ticks()
+                        print("check stop thread list")
+                        while 1:
+                            if 1 in SYSTEM_THREAD_STOP_LIST:
+                                print("wait stop")
+                                time.sleep(0.1)
+                            else:
+                                print("stop all thread")
+                                break
+                        print('total time ', time.ticks() - bak)
+                        Mqtt.pushID("PONG", "OK")
+                        print("write cmd.txt")
+                        with open('/flash/cmd.txt','w') as f:
+                            f.write(SUBSCRIBE_MSG[2])
+                        os.sync()
+                        print("reset")
+                        import machine
+                        machine.reset()
+                    SYSTEM_WiFiCheckCount = 99
+                    print("blockly:",SYSTEM_WiFiCheckCount)
+                elif SYSTEM_THREAD_MQTT_FLAG == True:
+                    if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1]) != None:
+                        print("user topic:",SUBSCRIBE_MSG[2])
+                        SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]] = SUBSCRIBE_MSG[2]
+                    else:
+                        print("error topic")
+        except Exception as e:
+            print(e)
+            print("MQTT_CALLBACK read error")
+
+        if startCallback:
+            Mqtt.pushID("PONG", "OK")
+            SYSTEM_TEST=True
+            saveMqttMsg = Timer(Timer.TIMER2, Timer.CHANNEL0, mode=Timer.MODE_ONE_SHOT, period=500, unit=Timer.UNIT_MS, callback=downloadtest, arg=SUBSCRIBE_MSG[2], start=True, priority=1, div=0)
+            # _thread.start_new_thread(downloadtest, (SUBSCRIBE_MSG[2],))
+
+        else:
+            SYSTEM_LOG_UART.start()
+            while SYSTEM_LOG_UART.any():
+                SYSTEM_LOG_UART.readline()
 
 
 class Lcd:
@@ -667,7 +882,7 @@ class ImageClassification():
             print(objname)
             # lcd.draw_string(0, 100, "%s "%objname,lcd.RED, lcd.WHITE)
             # lcd.draw_string(0, 150, "%.2f"%pmax,lcd.RED, lcd.WHITE)
-            respList={"x":0,"y":0,"w":0,"h":0,"value":"%.2f"%pmax,"classid":max_index,"index":0,"objnum":0,"objname":objname}
+            respList={"x":0,"y":0,"w":0,"h":0,"value":float("%.2f"%pmax),"classid":max_index,"index":0,"objnum":0,"objname":objname}
             self.classesArr.append(respList)
             return True
         except Exception as e:

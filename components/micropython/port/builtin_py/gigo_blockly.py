@@ -1,6 +1,5 @@
 import webai_blockly
 from machine import Timer,PWM
-from board import board_info,fpioaMapGPIO
 from fpioa_manager import fm
 from Maix import GPIO
 import gc,time
