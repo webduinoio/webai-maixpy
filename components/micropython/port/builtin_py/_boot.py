@@ -51,11 +51,12 @@ del ide, ide_mode_conf
 boot_py = '''
 try:
     from board import board_info
+    import webai_blockly,os
+    from webai_blockly import showMessage
     print(globals())
-    import webai_blockly
+
     import time,network,ujson,lcd
     from machine import Timer
-    from webai_blockly import showMessage
     print(globals())
     def timerCount(timer):
         if webai_blockly.SYSTEM_WiFiCheckCount<0:
@@ -149,6 +150,7 @@ try:
     del tim
     # del webai_blockly.SYSTEM_WiFiCheckCount
     lcd.clear()
+    flip=True
     while qrcodeMode:
         import sensor
         import image
@@ -158,8 +160,12 @@ try:
         sensor.reset()
         sensor.set_pixformat(sensor.RGB565)
         sensor.set_framesize(sensor.QVGA)
+        # sensor.set_windowing((320,240))
+        sensor.set_vflip(flip)
+        sensor.set_hmirror(flip)
         sensor.run(1)
         sensor.skip_frames(30)
+        lcd.register(0x36,0xC0)
         while True:
             #clock.tick()
             img = sensor.snapshot()
@@ -172,11 +178,24 @@ try:
                 try:
                     qrcodeData=ujson.loads(res[0].payload())
                     print(qrcodeData)
-                    #print(type(data['count']),data['count'])
-                    if qrcodeData['function']=="wifi":
-                        showMessage("setting WiFi...",clear=True)
-                        from webai_api import setWiFi
-                        setWiFi(qrcodeData['ssid'],qrcodeData['password'])
+                    if 'function' in qrcodeData:
+                        #print(type(data['count']),data['count'])
+                        if qrcodeData['function']=="wifi":
+                            lcd.register(0x36,0x80)
+                            showMessage("setting WiFi...",clear=True)
+                            from webai_api import setWiFi
+                            setWiFi(qrcodeData['ssid'],qrcodeData['password'])
+                    elif qrcodeData['cmd']=="run":
+                        lcd.register(0x36,0x80)
+                        showMessage("run "+qrcodeData['args'],clear=True)
+                        time.sleep(0.5)
+                        with open("/flash/"+qrcodeData['args']+".py") as f:
+                            exec(f.read())
+                    elif qrcodeData['cmd']=="deploy":
+                        lcd.register(0x36,0x80)
+                        showMessage("deploy python",clear=True)
+                        from webai_api import saveQRCode
+                        saveQRCode(qrcodeData['url'])
                 except Exception as e:
                     print(e)
                     print("format error")
@@ -184,11 +203,23 @@ try:
             if webai_blockly.SYSTEM_BTN_L.value()==0:
                 qrcodeMode=False
                 break
+            if webai_blockly.SYSTEM_BTN_R.value()==0:
+                showMessage("camera flip",clear=True)
+                time.sleep(0.5)
+                flip=not flip
+                sensor.set_vflip(flip)
+                sensor.set_hmirror(flip)
+                if flip:
+                    lcd.register(0x36,0xC0)
+                else:
+                    lcd.register(0x36,0x80)
+            # msg="press L Pass                press R Flip"
+            # lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
         del img,res,qrcodeData
-
+    lcd.register(0x36,0x80)
     showMessage("",clear=True)
     # del pinA,pinB,webai_blockly.SYSTEM_BTN_L,webai_blockly.SYSTEM_BTN_R,qrcodeMode
-    del qrcodeMode,timerCount,ujson,Timer,network
+    del qrcodeMode,timerCount,ujson,Timer,network,flip
     print("end")
     print(globals())
     gc.collect()
@@ -207,8 +238,14 @@ except Exception as e:
         tim.deinit()
         del tim
 finally:
+    lcd.register(0x36,0x80)
     lcd.clear()
     gc.collect()
+    # from machine import WDT
+    # def on_wdt(self):
+    #     print(self.context(), self)
+    #     self.feed()
+    # wdt1 = WDT(id=1, timeout=4000, callback=on_wdt, context={})
 '''
 
 # boot_py = '''
@@ -256,6 +293,21 @@ if not "main.py" in flash_ls:
     del f
 del main_py
 
+# if "mqtt.main.py" in flash_ls:
+#     cwd=os.getcwd()
+#     code = ""
+#     with open(cwd+"/mqtt.main.py") as f:
+#         code = f.read()
+#     with open(cwd+"/main.py", "w") as f:
+#         f.write(code)
+#     try:
+#         os.remove(cwd+"/mqtt.main.py")
+#     except Exception as e:
+#         print(e)
+#         print("del mqtt.main.py error")
+#     os.sync()
+    # import machine
+    # machine.reset()
 flash_ls = os.listdir("/flash")
 try:
     sd_ls = os.listdir("/sd")
@@ -319,7 +371,53 @@ print(banner)
 del banner
 from webai_blockly import Blockly_Init
 Blockly_Init()
-print("_boot init end")
-for i in range(200):
-    time.sleep_ms(1) # wait for key interrupt(for webAI tool)
-del i
+# import webai_blockly,_thread
+# print("_boot init end")
+# for i in range(200):
+#     time.sleep_ms(1) # wait for key interrupt(for webAI tool)
+# del i
+
+# def downloadtest():
+#     while 1:
+#         if webai_blockly.SYSTEM_TEST:
+            
+
+#             print("stop thread")
+#             for i in range(0,len(webai_blockly.SYSTEM_THREAD_START_LIST)):
+#                 webai_blockly.SYSTEM_THREAD_START_LIST[i]=0
+#             bak = time.ticks()
+#             print("check stop thread list")
+#             while 1:
+#                 if 1 in webai_blockly.SYSTEM_THREAD_STOP_LIST:
+#                     print("wait stop")
+#                     time.sleep(0.1)
+#                 else:
+#                     print("stop all thread")
+#                     break
+#             print('total time ', time.ticks() - bak)
+#             print("sleep 2")
+#             time.sleep(2)
+
+
+
+#             print("write1 cmd.txt")
+#             # with open('/flash/cmd.txt','w') as f:
+#             #     print("write2 cmd.txt")
+#             #     f.write(webai_blockly.SYSTEM_TEST_MSG)
+#             #     print("write3 cmd.txt")
+#             # print("write4 cmd.txt")
+#             f=open('/flash/cmd.txt','w')
+#             print("write2 cmd.txt")
+#             f.write(webai_blockly.SYSTEM_TEST_MSG)
+#             print("write3 cmd.txt")
+#             f.close()
+#             print("write4 cmd.txt")
+#             os.sync()
+#             print("reset")
+#             import machine
+#             machine.reset()
+#         time.sleep(0.1)
+
+# _thread.start_new_thread(downloadtest, ())
+
+            
