@@ -5,7 +5,7 @@ Copyright © 2018 Jean-Christophe Bos & HC² (www.hc2.fr)
 
 from   struct import pack
 import socket
-import gc
+import gc,time
 
 class MicroWebCli :
 
@@ -582,6 +582,7 @@ class MicroWebCli :
             self._headers       = { }
             self._contentType   = None
             self._contentLength = None
+            self._chunked       = None
             self._processResponse()
 
         # ------------------------------------------------------------------------
@@ -615,6 +616,12 @@ class MicroWebCli :
                                        .split(':', 1)
                 if len(elements) == 2 :
                     self._headers[elements[0].strip()] = elements[1].strip()
+                    key = elements[0].strip()
+                    val = elements[1].strip()
+                    print('<'+key+'>:<'+val+'>')
+                    self._headers[key] = val
+                    if(val == 'chunked') :
+                        self._chunked = True                    
                 elif len(elements) == 1 and len(elements[0]) == 0 :
                     self._contentType   = self._headers.get("Content-Type", None)
                     ctLen               = self._headers.get("Content-Length", None)
@@ -715,11 +722,16 @@ class MicroWebCli :
                 nbytes = len(buf)
             if nbytes > 0 :
                 try :
+                    print("1.read "+str(nbytes)+"...")
                     x = self._socket.readinto(buf, nbytes)
+                    print("2.read "+str(nbytes)+"...")
                     if x < nbytes :
+                        print("less nBytes:"+str(x)+' , nbytes:'+str(nbytes))
                         self.Close()
                     return x
-                except :
+                except Exception as e:
+                    print("readContent except!")
+                    print(e)
                     self.Close()
             return 0
 
@@ -739,8 +751,10 @@ class MicroWebCli :
         # ------------------------------------------------------------------------
 
         def WriteContentToFile(self, filepath, progressCallback=None) :
+            self._socket.setblocking(True)
             fSize = self._contentLength
-            buf   = MicroWebCli._tryAllocByteArray(fSize if fSize and fSize < 10240 else 10240)
+            bufferSize = 10 * 1024
+            buf   = MicroWebCli._tryAllocByteArray(fSize if fSize and fSize < bufferSize else bufferSize)
             if not buf :
                 raise MemoryError('Not enough memory to allocate buffer')
             buf = memoryview(buf)
@@ -750,7 +764,55 @@ class MicroWebCli :
                 raise Exception('Error to create file (%s)' % filepath)
             sizeRem = fSize
             pgrSize = 0
-            while sizeRem is None or sizeRem > 0 :
+            if(self._chunked != None) :
+                while self._chunked :
+                    buf = buf[:bufferSize]
+                    self.saveChunked(file, fSize, buf, pgrSize, progressCallback)
+            else :
+                while sizeRem is None or sizeRem > 0 :
+                    if sizeRem and sizeRem < len(buf) :
+                        buf = buf[:sizeRem]
+                    x = self.ReadContentInto(buf)
+                    if x == 0 :
+                        break
+                    if x < len(buf) :
+                        buf = buf[:x]
+                    if sizeRem :
+                        sizeRem -= x
+                    try :
+                        file.write(buf)
+                    except :
+                        break
+                    pgrSize += x
+                    if progressCallback :
+                        try :
+                            progressCallback(self, pgrSize, fSize)
+                        except Exception as ex :
+                            print('Error in progressCallback : %s' % ex)
+                file.close()
+                self.Close()
+                if sizeRem and sizeRem > 0 :
+                    if not 'remove' in globals() :
+                        from os import remove
+                    remove(filepath)
+                    raise Exception('Error to receive and save file (%s)' % filepath)
+
+        def saveChunked(self, file, fSize,  buf, pgrSize, progressCallback) :
+            print('')
+            strLen = str(self._socket.readline())
+            if(strLen == '') :
+                print('[ chunked finished ]')
+                self._chunked = False
+                return
+            strChunkSize = strLen[2:len(strLen)-5]
+            if(strChunkSize == '') :
+                print('[ read next chunked ]')
+                return
+            sizeRem = int('0x' + strChunkSize)
+            chunkedSize = sizeRem
+            print('[chunked mode] '+strLen+" >>> "+ strChunkSize)
+            print('[chunked mode] '+str(sizeRem)+ ' bytes')
+            while sizeRem > 0 :
                 if sizeRem and sizeRem < len(buf) :
                     buf = buf[:sizeRem]
                 x = self.ReadContentInto(buf)
@@ -758,25 +820,23 @@ class MicroWebCli :
                     break
                 if x < len(buf) :
                     buf = buf[:x]
-                if sizeRem :
-                    sizeRem -= x
-                try :
-                    file.write(buf)
-                except :
-                    break
+                sizeRem -= x
                 pgrSize += x
                 if progressCallback :
                     try :
                         progressCallback(self, pgrSize, fSize)
                     except Exception as ex :
                         print('Error in progressCallback : %s' % ex)
-            file.close()
-            self.Close()
-            if sizeRem and sizeRem > 0 :
-                if not 'remove' in globals() :
-                    from os import remove
-                remove(filepath)
-                raise Exception('Error to receive and save file (%s)' % filepath)
+                try :
+                    print("write,sizeRem: "+str(sizeRem)+' write: '+str(len(buf)))
+                    file.write(buf)
+                except :
+                    break
+
+            if chunkedSize == 0 :
+                file.close()
+                self.Close()
+                self._chunked = False
 
         # ------------------------------------------------------------------------
 
