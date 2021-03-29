@@ -48,15 +48,15 @@ try:
         print("mqtt txt2:"+mqttJsonData)
     del mqttJsonData
 
-    with open('/flash/cmd.py', 'r') as f:
+    with open('/flash/qrcode.cmd', 'r') as f:
         QRCodeJsonData = f.read()
     del f
-    with open('/flash/cmd.py', 'w') as f:
+    with open('/flash/qrcode.cmd', 'w') as f:
         f.write("")
     del f
     os.sync()
     if QRCodeJsonData == "":
-        print("cmd.py content is null")
+        print("qrcode.cmd content is null")
         qrcodeFlag=False
     else:
         QRCodeJsonData = ujson.loads(QRCodeJsonData)
@@ -81,6 +81,7 @@ try:
 
 except Exception as e:
     print(e)
+    sys.print_exception(e)
     print("not find cmd.txt")
 finally:
     gc.collect()
