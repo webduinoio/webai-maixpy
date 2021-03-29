@@ -20,11 +20,11 @@ def Blockly_Init():
     SYSTEM_THREAD_STOP_LIST=[]
 
 
-    global SYSTEM_TEST
-    SYSTEM_TEST=False
+    global SYSTEM_SAVE_MSG_FLAG
+    SYSTEM_SAVE_MSG_FLAG=False
     # SYSTEM_TEST_MSG=""
-    global a_lock
-    a_lock = _thread.allocate_lock()
+    global SYSTEM_ALLOCATE_LOCK
+    SYSTEM_ALLOCATE_LOCK = _thread.allocate_lock()
 
     fpioaMapGPIO={
 '0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
@@ -228,11 +228,11 @@ def Blockly_Init():
         print("SYSTEM_LOG_UART error")
 
 
-def downloadtest(timer):
-# def downloadtest(cmd):
+def saveMsg(timer):
+# def saveMsg(cmd):
     global SYSTEM_THREAD_START_LIST
     while 1:
-        if SYSTEM_TEST:
+        if SYSTEM_SAVE_MSG_FLAG:
             # print("stop thread")
 
             # for i in range(0,len(SYSTEM_THREAD_START_LIST)):
@@ -252,7 +252,7 @@ def downloadtest(timer):
             # print("sleep 2")
             # time.sleep(2)
             print("lock thread")
-            while not a_lock.acquire():
+            while not SYSTEM_ALLOCATE_LOCK.acquire():
                 time.sleep(0.05)
             print("sleep 1")
             time.sleep(1)
@@ -285,7 +285,7 @@ def MQTT_CALLBACK(uartObj):
         SUBSCRIBE_MSG = None
         startCallback=False
         global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC,SYSTEM_THREAD_START_LIST
-        global SYSTEM_TEST
+        global SYSTEM_SAVE_MSG_FLAG
         try:
             while SYSTEM_LOG_UART.any():
                 myLine = SYSTEM_LOG_UART.readline()
@@ -307,7 +307,7 @@ def MQTT_CALLBACK(uartObj):
                         # print("reset")
                         #time.sleep(1)
                         # SYSTEM_TEST_MSG=SUBSCRIBE_MSG[2]
-                        # SYSTEM_TEST=True
+                        # SYSTEM_SAVE_MSG_FLAG=True
                     elif SUBSCRIBE_MSG[2].find("_RESET") == 0:
                         # Mqtt.push("6e559b/PONG","OK")
                         Mqtt.pushID("PONG", "OK")
@@ -358,7 +358,7 @@ def MQTT_CALLBACK(uartObj):
                         resetFlag=False
                         print("error command")
                     resetFlag=False
-                    # _thread.start_new_thread(downloadtest, (SUBSCRIBE_MSG[2],))
+                    # _thread.start_new_thread(saveMsg, (SUBSCRIBE_MSG[2],))
                     # startCallback=True
                     if resetFlag:
                         print("stop thread")
@@ -396,10 +396,10 @@ def MQTT_CALLBACK(uartObj):
 
         if startCallback:
             Mqtt.pushID("PONG", "OK")
-            SYSTEM_TEST=True
-            saveMqttMsg = Timer(Timer.TIMER2, Timer.CHANNEL0, mode=Timer.MODE_ONE_SHOT, period=500, unit=Timer.UNIT_MS, callback=downloadtest, arg=SUBSCRIBE_MSG[2], start=True, priority=1, div=0)
-            # _thread.start_new_thread(downloadtest, (SUBSCRIBE_MSG[2],))
-
+            SYSTEM_SAVE_MSG_FLAG=True
+            # saveMqttMsg = Timer(Timer.TIMER2, Timer.CHANNEL0, mode=Timer.MODE_ONE_SHOT, period=500, unit=Timer.UNIT_MS, callback=saveMsg, arg=SUBSCRIBE_MSG[2], start=True, priority=1, div=0)
+            Timer(Timer.TIMER2, Timer.CHANNEL0, mode=Timer.MODE_ONE_SHOT, period=500, unit=Timer.UNIT_MS, callback=saveMsg, arg=SUBSCRIBE_MSG[2], start=True, priority=1, div=0)
+            # _thread.start_new_thread(saveMsg, (SUBSCRIBE_MSG[2],))
         else:
             SYSTEM_LOG_UART.start()
             while SYSTEM_LOG_UART.any():

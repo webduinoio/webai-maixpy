@@ -13,7 +13,7 @@ def saveQRCode(url):
     with open('/flash/cmd.txt','w') as f:
         # _DOWNLOAD_FILE/
 
-        qrcodeData={"fileName":"cmd.py","url":"{url}".format(url=url)}
+        qrcodeData={"fileName":"qrcode.cmd","url":"{url}".format(url=url)}
         f.write("_DOWNLOAD_FILE/"+ujson.dumps(qrcodeData))
     os.sync()
     print("reset")

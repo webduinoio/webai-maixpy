@@ -204,8 +204,6 @@ try:
                 qrcodeMode=False
                 break
             if webai_blockly.SYSTEM_BTN_R.value()==0:
-                showMessage("camera flip",clear=True)
-                time.sleep(0.5)
                 flip=not flip
                 sensor.set_vflip(flip)
                 sensor.set_hmirror(flip)
@@ -213,6 +211,8 @@ try:
                     lcd.register(0x36,0xC0)
                 else:
                     lcd.register(0x36,0x80)
+                showMessage("",clear=True)
+                time.sleep(0.5)
             # msg="press L Pass                press R Flip"
             # lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
         del img,res,qrcodeData
@@ -376,48 +376,3 @@ Blockly_Init()
 # for i in range(200):
 #     time.sleep_ms(1) # wait for key interrupt(for webAI tool)
 # del i
-
-# def downloadtest():
-#     while 1:
-#         if webai_blockly.SYSTEM_TEST:
-            
-
-#             print("stop thread")
-#             for i in range(0,len(webai_blockly.SYSTEM_THREAD_START_LIST)):
-#                 webai_blockly.SYSTEM_THREAD_START_LIST[i]=0
-#             bak = time.ticks()
-#             print("check stop thread list")
-#             while 1:
-#                 if 1 in webai_blockly.SYSTEM_THREAD_STOP_LIST:
-#                     print("wait stop")
-#                     time.sleep(0.1)
-#                 else:
-#                     print("stop all thread")
-#                     break
-#             print('total time ', time.ticks() - bak)
-#             print("sleep 2")
-#             time.sleep(2)
-
-
-
-#             print("write1 cmd.txt")
-#             # with open('/flash/cmd.txt','w') as f:
-#             #     print("write2 cmd.txt")
-#             #     f.write(webai_blockly.SYSTEM_TEST_MSG)
-#             #     print("write3 cmd.txt")
-#             # print("write4 cmd.txt")
-#             f=open('/flash/cmd.txt','w')
-#             print("write2 cmd.txt")
-#             f.write(webai_blockly.SYSTEM_TEST_MSG)
-#             print("write3 cmd.txt")
-#             f.close()
-#             print("write4 cmd.txt")
-#             os.sync()
-#             print("reset")
-#             import machine
-#             machine.reset()
-#         time.sleep(0.1)
-
-# _thread.start_new_thread(downloadtest, ())
-
-            
