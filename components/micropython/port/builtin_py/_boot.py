@@ -371,6 +371,26 @@ print(banner)
 del banner
 from webai_blockly import Blockly_Init
 Blockly_Init()
+
+
+
+import lcd, image, time
+from webai_blockly import Speaker
+
+gc.collect()
+time.sleep(0.5)
+lcd.init()
+img = image.Image('logo/logo.jpg')
+lcd.display(img)
+del img
+gc.collect()
+time.sleep(0.5)
+
+sp = Speaker()
+sp.setVolume(50)
+sp.start(fileName='logo/logo', sample_rate=11050)
+gc.collect()
+
 # import webai_blockly,_thread
 # print("_boot init end")
 # for i in range(200):
