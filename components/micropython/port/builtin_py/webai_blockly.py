@@ -433,9 +433,9 @@ class Lcd:
         if type(img) == str:
             cwd = SYSTEM_DEFAULT_PATH
             if cwd == "flash":
-                self.path = "/flash/"+img
+                self.path = "/flash/"+img+'.jpg'
             else:
-                self.path = "/sd/"+img
+                self.path = "/sd/"+img+'.jpg'
             self.img = self.image.Image(self.path)
             lcd.display(self.img)
         else:
@@ -508,6 +508,14 @@ class Camera:
 
     def stream(self):
         self.sensor.run(1)
+
+    def save(self,fileName):
+        cwd = SYSTEM_DEFAULT_PATH
+        if cwd == "flash":
+            self.path = "/flash/"+fileName+".jpg"
+        else:
+            self.path = "/sd/"+fileName+".jpg"
+        self.sensor.snapshot().save(self.path)
 
     def selfObject(self):
         return self.sensor
