@@ -618,7 +618,7 @@ class MicroWebCli :
                     self._headers[elements[0].strip()] = elements[1].strip()
                     key = elements[0].strip()
                     val = elements[1].strip()
-                    print('<'+key+'>:<'+val+'>')
+                    # print('<'+key+'>:<'+val+'>')
                     self._headers[key] = val
                     if(val == 'chunked') :
                         self._chunked = True                    
@@ -722,11 +722,11 @@ class MicroWebCli :
                 nbytes = len(buf)
             if nbytes > 0 :
                 try :
-                    print("1.read "+str(nbytes)+"...")
+                    # print("1.read "+str(nbytes)+"...")
                     x = self._socket.readinto(buf, nbytes)
-                    print("2.read "+str(nbytes)+"...")
+                    # print("2.read "+str(nbytes)+"...")
                     if x < nbytes :
-                        print("less nBytes:"+str(x)+' , nbytes:'+str(nbytes))
+                        # print("less nBytes:"+str(x)+' , nbytes:'+str(nbytes))
                         self.Close()
                     return x
                 except Exception as e:
@@ -798,20 +798,20 @@ class MicroWebCli :
                     raise Exception('Error to receive and save file (%s)' % filepath)
 
         def saveChunked(self, file, fSize,  buf, pgrSize, progressCallback) :
-            print('')
+            # print('')
             strLen = str(self._socket.readline())
             if(strLen == '') :
-                print('[ chunked finished ]')
+                # print('[ chunked finished ]')
                 self._chunked = False
                 return
             strChunkSize = strLen[2:len(strLen)-5]
             if(strChunkSize == '') :
-                print('[ read next chunked ]')
+                # print('[ read next chunked ]')
                 return
             sizeRem = int('0x' + strChunkSize)
             chunkedSize = sizeRem
-            print('[chunked mode] '+strLen+" >>> "+ strChunkSize)
-            print('[chunked mode] '+str(sizeRem)+ ' bytes')
+            # print('[chunked mode] '+strLen+" >>> "+ strChunkSize)
+            # print('[chunked mode] '+str(sizeRem)+ ' bytes')
             while sizeRem > 0 :
                 if sizeRem and sizeRem < len(buf) :
                     buf = buf[:sizeRem]
@@ -828,7 +828,7 @@ class MicroWebCli :
                     except Exception as ex :
                         print('Error in progressCallback : %s' % ex)
                 try :
-                    print("write,sizeRem: "+str(sizeRem)+' write: '+str(len(buf)))
+                    # print("write,sizeRem: "+str(sizeRem)+' write: '+str(len(buf)))
                     file.write(buf)
                 except :
                     break
