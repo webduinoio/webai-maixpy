@@ -271,6 +271,7 @@ def saveMsg(timer):
             print("write4 cmd.txt")
             os.sync()
             print("reset")
+            SYSTEM_ALLOCATE_LOCK.release()
             import machine
             machine.reset()
         print("wait callback")
@@ -395,7 +396,7 @@ def MQTT_CALLBACK(uartObj):
             print("MQTT_CALLBACK read error")
 
         if startCallback:
-            Mqtt.pushID("PONG", "OK")
+            Mqtt.pushID("PONG", "saveCmd")
             SYSTEM_SAVE_MSG_FLAG=True
             # saveMqttMsg = Timer(Timer.TIMER2, Timer.CHANNEL0, mode=Timer.MODE_ONE_SHOT, period=500, unit=Timer.UNIT_MS, callback=saveMsg, arg=SUBSCRIBE_MSG[2], start=True, priority=1, div=0)
             Timer(Timer.TIMER2, Timer.CHANNEL0, mode=Timer.MODE_ONE_SHOT, period=500, unit=Timer.UNIT_MS, callback=saveMsg, arg=SUBSCRIBE_MSG[2], start=True, priority=1, div=0)
@@ -472,13 +473,12 @@ class Lcd:
         self.img.draw_cross(x, y, color, size, thickness)
         lcd.display(self.img)
 
-    def drawString(self, x, y, text, color=0xffffff, scale=5, x_spacing=3, y_spacing=1, mono_space=False):
-        if not text == '':
-            self.img.draw_string(x, y, text, color, scale,
-                        x_spacing, y_spacing, mono_space)
-            lcd.display(self.img)
-
-
+    def drawString(self, x, y, text, color=(255,255,255), scale=2, x_spacing=20, mono_space=False):
+        self.image.font_load(self.image.UTF8, 16, 16, 0x280000)
+        self.img.draw_string(x, y, text, scale=scale, color=color, x_spacing=x_spacing, mono_space=mono_space)
+        self.image.font_free()
+        lcd.display(self.img)
+            
 class Camera:
     import sensor
     def __init__(self, flip=1, auto_gain=1, auto_whitebal=1, auto_exposure=1, brightness=3):
