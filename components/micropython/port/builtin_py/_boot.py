@@ -433,7 +433,7 @@ time.sleep(0.5)
 
 sp = Speaker()
 sp.setVolume(10)
-sp.start(fileName='logo', sample_rate=11050)
+sp.start(fileName='logo', sample_rate=22030)
 del sp
 gc.collect()
 
