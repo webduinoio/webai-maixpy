@@ -269,6 +269,7 @@ def saveMsg(timer):
             f.write(timer.callback_arg())
             # f.write(cmd)
             print("write3 cmd.txt")
+            f.flush()
             f.close()
             print("write4 cmd.txt")
             os.sync()
@@ -386,6 +387,7 @@ def MQTT_CALLBACK(uartObj):
                         print("write cmd.txt")
                         with open('/flash/cmd.txt','w') as f:
                             f.write(SUBSCRIBE_MSG[2])
+                            f.flush()
                         os.sync()
                         print("reset")
                         import machine

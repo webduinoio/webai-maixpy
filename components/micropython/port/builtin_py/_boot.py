@@ -46,16 +46,19 @@ if resetPin.value()==0:
     try:
         with open('/flash/cmd.txt','w') as f:
             f.write()
+            f.flush()
     except Exception as e:
         print("reset cmd.txt error")
     try:
         with open('/flash/qrcode.cmd','w') as f:
             f.write()
+            f.flush()
     except Exception as e:
         print("reset qrcode.cmd error")
     try:
         with open('/flash/wifi.json','w') as f:
             f.write("""{"function":"wifi","ssid":"webduino.io","pwd":"webduino"}""")
+            f.flush()
     except Exception as e:
         print("reset wifi.json error")
     del f
@@ -327,6 +330,7 @@ flash_ls = os.listdir()
 if not "boot.py" in flash_ls:
     f = open("boot.py", "wb")
     f.write(boot_py)
+    f.flush()
     f.close()
     del f
 del boot_py
@@ -336,6 +340,7 @@ del boot_py
 if not "main.py" in flash_ls:
     f = open("main.py", "wb")
     f.write(main_py)
+    f.flush()
     f.close()
     del f
 del main_py

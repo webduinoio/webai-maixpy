@@ -12,6 +12,7 @@ try:
     del f
     with open('/flash/cmd.txt', 'w') as f:
         f.write("")
+        f.flush()
     del f
     os.sync()
     print("mqtt txt1:"+mqttJsonData)
@@ -52,6 +53,7 @@ try:
     del f
     with open('/flash/qrcode.cmd', 'w') as f:
         f.write("")
+        f.flush()
     del f
     os.sync()
     if QRCodeJsonData == "":

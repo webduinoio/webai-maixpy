@@ -80,6 +80,7 @@ try:
 except Exception as e:
     with open('/flash/config.json', "w") as f:
         f.write(cfg)
+        f.flush()
     try:
         uos.remove('/flash/boot.py')
     except Exception as f:
