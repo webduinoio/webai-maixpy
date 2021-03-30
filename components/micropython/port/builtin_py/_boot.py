@@ -45,21 +45,20 @@ if resetPin.value()==0:
         print("reset main.py error")
     try:
         with open('/flash/cmd.txt','w') as f:
-            f.write()
+            f.write("")
     except Exception as e:
         print("reset cmd.txt error")
     try:
         with open('/flash/qrcode.cmd','w') as f:
-            f.write()
+            f.write("")
     except Exception as e:
         print("reset qrcode.cmd error")
     try:
         with open('/flash/wifi.json','w') as f:
-            f.write("""{"function":"wifi","ssid":"webduino.io","pwd":"webduino"}""")
+            f.write('{"ssid":"%s","pwd":"%s"}'%("webduino.io","webduino"))
     except Exception as e:
         print("reset wifi.json error")
     del f
-    os.sync()
     lcd.clear(0xFFFF)
     import machine
     machine.reset()
@@ -424,7 +423,7 @@ import webai_blockly
 import image
 from webai_blockly import Speaker
 gc.collect()
-time.sleep(0.5)
+# time.sleep(0.5)
 img = image.Image('logo.jpg')
 lcd.display(img)
 del img
@@ -432,8 +431,8 @@ gc.collect()
 time.sleep(0.5)
 
 sp = Speaker()
-sp.setVolume(10)
-sp.start(fileName='logo', sample_rate=22030)
+sp.setVolume(100)
+sp.start(fileName='logo', sample_rate=22050)
 del sp
 gc.collect()
 
