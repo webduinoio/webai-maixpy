@@ -279,7 +279,7 @@ def downloadModel(fileName,modelType,url,isFile=False):
         #print(myLine)
     #global uart3
     #uart3=webai_blockly.SYSTEM_AT_UART
-    showMessage("wait init",clear=True)
+    showMessage("initialize...",clear=True)
     if fileName!="main.py":
         speed = 115200*40
         commCycle("AT+UART_CUR="+str(speed)+",8,1,0,0")
@@ -527,7 +527,7 @@ def downloadFile(fileName,url):
     from webai_blockly import showMessage
     import network    
     from microWebCli import MicroWebCli
-    showMessage("wait init",clear=True)
+    showMessage("initialize...",clear=True)
     fm.register(19, fm.fpioa.GPIOHS0)
     wifiStatusPin = GPIO(GPIO.GPIOHS0, GPIO.IN)
     WIFI_SSID = ""
@@ -598,7 +598,7 @@ def uploadPic(dsname,count,url,hashKey):
     from webai_blockly import showMessage
     import network    
     from microWebCli import MicroWebCli
-    showMessage("wait init",clear=True)
+    showMessage("initialize...",clear=True)
     fm.register(19, fm.fpioa.GPIOHS0)
     wifiStatusPin = GPIO(GPIO.GPIOHS0, GPIO.IN)
     print("connect wifi")
