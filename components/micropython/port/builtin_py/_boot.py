@@ -421,21 +421,20 @@ Blockly_Init()
 import webai_blockly
 
 
-import lcd, image, time
+import image
 from webai_blockly import Speaker
-
 gc.collect()
 time.sleep(0.5)
-lcd.init()
-img = image.Image('logo/logo.jpg')
+img = image.Image('logo.jpg')
 lcd.display(img)
 del img
 gc.collect()
 time.sleep(0.5)
 
 sp = Speaker()
-sp.setVolume(50)
-sp.start(fileName='logo/logo', sample_rate=11050)
+sp.setVolume(10)
+sp.start(fileName='logo', sample_rate=11050)
+del sp
 gc.collect()
 
 # import webai_blockly,_thread
