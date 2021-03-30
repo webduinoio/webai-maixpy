@@ -26,7 +26,7 @@ def Blockly_Init():
     global SYSTEM_ALLOCATE_LOCK
     SYSTEM_ALLOCATE_LOCK = _thread.allocate_lock()
     global SYSTEM_MQTT_CONNECT
-    SYSTEM_MQTT_CONNECT=True
+    SYSTEM_MQTT_CONNECT=False
 
     fpioaMapGPIO={
 '0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
@@ -61,6 +61,8 @@ def Blockly_Init():
     fm.register(27, fm.fpioa.UART2_TX, force=True)
     fm.register(28, fm.fpioa.UART2_RX, force=True)
     SYSTEM_AT_UART = UART(UART.UART2, 115200, timeout=5000, read_buf_len=40960)
+    startTime = time.ticks_ms()
+    endTime = 0
     while SYSTEM_AT_UART.any():
         endTime = time.ticks_ms()
         if((endTime-startTime) >= 500):
@@ -69,7 +71,6 @@ def Blockly_Init():
     SYSTEM_AT_UART.write('AT+GMR' + '\r\n')
     SYSTEM_ESP_VERSION = ""
     SYSTEM_ESP_DEVICE_ID = ""
-    startTime = time.ticks_ms()
     myLine = ''
     ifdata = True
     while not "OK" in myLine:
@@ -107,7 +108,7 @@ def Blockly_Init():
     # fm.unregister(28)
     # del SYSTEM_AT_UART
 
-    del myLine, ifdata
+    del myLine, startTime, ifdata, endTime
 
     SYSTEM_DEFAULT_PATH = os.getcwd()
     if "flash" in SYSTEM_DEFAULT_PATH:
@@ -993,8 +994,14 @@ class Mqtt:
         print("subscribe topic ...")
         mqttSetSub = 'AT+MQTT="sub","{topic}"'.format(topic=topic)
         print(mqttSetSub)
-        commCycle(mqttSetSub)
-        print("subscribe "+topic+" finish")
+        status=commCycle(mqttSetSub)
+        if status=="OK":
+            print("subscribe "+topic+" finish")
+            showMessage("subscribe "+topic+" finish",clear=True)
+        else:
+            print("subscribe "+topic+" error")
+            showMessage("subscribe "+topic+" finish",clear=True)
+        del status
         time.sleep(0.5)
 
     def push(topic, msg):
@@ -1017,8 +1024,14 @@ class Mqtt:
         print("subscribeID topic ...")
         mqttSetSub = 'AT+MQTT="sub","{mqttUID}/{topic}"'.format(mqttUID=SYSTEM_ESP_DEVICE_ID, topic=topic)
         print(mqttSetSub)
-        commCycle(mqttSetSub)
-        print("subscribeID "+topic+" finish")
+        status=commCycle(mqttSetSub)
+        if status=="OK":
+            print("subscribe "+topic+" finish")
+            showMessage("subscribe "+topic+" finish",clear=True)
+        else:
+            print("subscribe "+topic+" error")
+            showMessage("subscribe "+topic+" finish",clear=True)
+        del status
         time.sleep(0.5)
 
     def pushID(topic, msg):
