@@ -833,7 +833,98 @@ def uploadPic(dsname,count,url,hashKey):
             #pass
         #myLine = uart2.readline()
         #print(myLine)
+def OTAWiFi():
+    from machine import UART
+    from fpioa_manager import fm
+    from Maix import GPIO
+    import gc,time,lcd,network,ujson,sys
+    from webai_blockly import showMessage
+    import webai_blockly
 
+    webai_blockly.SYSTEM_MQTT_CALLBACK_FLAG=False
+    # lcd.init()
+    # lcd.clear()
+    #fm.register(18, fm.fpioa.UART1_RX, force=True)
+    # SYSTEM_LOG_UART = UART(UART.UART1, 115200*1, timeout=5000, read_buf_len=40960)
+    webai_blockly.SYSTEM_AT_UART.write('AT+CIUPDATE\r\n')
+    printLogVersion=False
+    startTime=time.ticks_ms()
+    endTime=0
+    ifdata=True
+    timeout=15000
+    myLine=''
+    # showMessage("check version")
+    try:
+        while  not  "Starting OTA" in myLine:
+            while not webai_blockly.SYSTEM_LOG_UART.any():
+                endTime=time.ticks_ms()
+                # print(endTime-startTime)
+                if((endTime-startTime)>=timeout):
+                    ifdata=False
+                    break
+            if(ifdata):
+                myLine = webai_blockly.SYSTEM_LOG_UART.readline()
+                print(myLine)
+                if "newVersion:O" in myLine:
+                    printLogVersion=True
+                    myLine="Starting OTA"
+                    showMessage("update,please wait...",x=-1,y=2.5,center=False,clear=True)
+                    break
+                if "newVersion:X" in myLine:
+                    # showMessage("version is new")
+                    raise Exception("version is new")
+                    #sys.exit()
+            else:
+                print("timeout")
+                raise Exception('timeout')
+
+        if not printLogVersion:
+            showMessage("update,please wait...",clear=True)
+        startTime=time.ticks_ms()
+        ifdata=True
+        timeout=60000
+        try:
+            while  not  "init finish" in myLine:
+                while not webai_blockly.SYSTEM_LOG_UART.any():
+                    endTime=time.ticks_ms()
+                    # print(endTime-startTime)
+                    if((endTime-startTime)>=timeout):
+                        ifdata=False
+                        break
+                if(ifdata):
+                    myLine = webai_blockly.SYSTEM_LOG_UART.readline()
+                    print(myLine)
+                    if printLogVersion:
+                        if "Written length" in myLine:
+                            try:
+                                myLine=myLine.decode()
+                                myLine=myLine.rstrip()
+                                showMessage(myLine)
+                            except Exception as e:
+                                print(e)
+                                sys.print_exception(e)
+                else:
+                    print("timeout")
+                    showMessage("update error",clear=True)
+                    raise Exception('timeout')
+            showMessage("succeeded,reboot...",clear=True)
+            print("succeeded")
+            import machine
+            machine.reset()
+        except Exception as e:
+            print(e)
+            print("update error")
+            sys.print_exception(e)
+            showMessage("update error",clear=True)
+            webai_blockly.SYSTEM_MQTT_CALLBACK_FLAG=True
+            time.sleep(2)
+    except Exception as f:
+        print(f)
+        print("update error")
+        # sys.print_exception(f)
+        webai_blockly.SYSTEM_MQTT_CALLBACK_FLAG=True
+    del printLogVersion,startTime,endTime,ifdata,timeout,myLine
+    gc.collect()
 
 print("load webai_api finish")
     
