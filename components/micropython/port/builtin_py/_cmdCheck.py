@@ -1,4 +1,6 @@
 if deployFlag:
+    from webai_blockly import Mqtt
+    Mqtt.pushID("PONG", "ready")
     print("deploy true,run main.py")
 else:
     import webai_blockly

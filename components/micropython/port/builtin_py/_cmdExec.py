@@ -1,5 +1,5 @@
 from webai_api import takeMobileNetPic,downloadModel,downloadFile
-import gc,os,lcd
+import gc,os
 import ujson
 gc.collect()
 resetFlag=False
@@ -7,7 +7,6 @@ cmdFlag=True
 qrcodeFlag=True
 deployFlag=False
 try:
-    lcd.init()
     with open('/flash/cmd.txt', 'r') as f:
         mqttJsonData = f.read()
     del f

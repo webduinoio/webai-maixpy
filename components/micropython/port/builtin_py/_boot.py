@@ -25,6 +25,47 @@ print("_boot init end")
 for i in range(200):
     time.sleep_ms(1)  # wait for key interrupt(for maixpy ide)
 del i
+from fpioa_manager import fm
+from Maix import GPIO
+import lcd
+lcd.init()
+fm.fpioa.set_function(7, fm.fpioa.GPIO7)
+resetPin = GPIO(GPIO.GPIO7, GPIO.IN)
+if resetPin.value()==0:
+    lcd.clear(0x00F8)
+    print("reset filesystem")
+    f=None
+    try:
+        os.remove('/flash/boot.py')
+    except Exception as e:
+        print("reset boot.py error")
+    try:
+        os.remove('/flash/main.py')
+    except Exception as e:
+        print("reset main.py error")
+    try:
+        with open('/flash/cmd.txt','w') as f:
+            f.write()
+    except Exception as e:
+        print("reset cmd.txt error")
+    try:
+        with open('/flash/qrcode.cmd','w') as f:
+            f.write()
+    except Exception as e:
+        print("reset qrcode.cmd error")
+    try:
+        with open('/flash/wifi.json','w') as f:
+            f.write("""{"function":"wifi","ssid":"webduino.io","pwd":"webduino"}""")
+    except Exception as e:
+        print("reset wifi.json error")
+    del f
+    os.sync()
+    lcd.clear(0xFFFF)
+    import machine
+    machine.reset()
+fm.unregister(7)
+del resetPin
+gc.collect()
 
 # check IDE mode
 ide_mode_conf = "/flash/ide_mode.conf"
@@ -50,6 +91,8 @@ del ide, ide_mode_conf
 
 boot_py = '''
 try:
+    # print("start boot.py,sleep 5")
+    # time.sleep(5)
     from board import board_info
     import webai_blockly,os
     from webai_blockly import showMessage
@@ -65,9 +108,9 @@ try:
         webai_blockly.SYSTEM_WiFiCheckCount-=1
         print("timer:",webai_blockly.SYSTEM_WiFiCheckCount)
     tim = Timer(Timer.TIMER0, Timer.CHANNEL0, mode=Timer.MODE_PERIODIC, period=1, unit=Timer.UNIT_S, callback=timerCount, arg=timerCount, start=False, priority=1, div=0)
-    lcd.init()
+    # lcd.init()
     lcd.clear()
-    showMessage("k210 ver:"+webai_blockly.SYSTEM_K210_VERSION[5]+" (lite)",x=-1,y=5,center=False,clear=False)
+    showMessage("ver:"+webai_blockly.SYSTEM_K210_VERSION[6],x=-1,y=5,center=False,clear=False)
     showMessage("deviceID:"+webai_blockly.SYSTEM_ESP_DEVICE_ID,x=-1,y=1,center=False,clear=False)
     showMessage("WiFi checking...",x=-1,y=4,center=False,clear=False)
     WIFI_SSID = ""
@@ -125,6 +168,8 @@ try:
 
     # print(webai_blockly.SYSTEM_WiFiInfo)
     if wifiStatus=="OK":
+        from webai_api import OTAWiFi
+        OTAWiFi()
         showMessage(" "*40,x=-1,y=4,center=False,clear=False)
         showMessage("WiFi status:OK ("+webai_blockly.SYSTEM_WiFiInfo[6]+" dBm)",x=-1,y=4,center=False,clear=False)
     else:
@@ -154,8 +199,9 @@ try:
     while qrcodeMode:
         import sensor
         import image
-        import lcd
-        lcd.init()
+        # import lcd
+        # lcd.init()
+        lcd.clear()
         showMessage("init qrcode mode",clear=True)
         sensor.reset()
         sensor.set_pixformat(sensor.RGB565)
@@ -256,7 +302,8 @@ main_py = '''
 try:
     import gc, lcd, image, sys
     gc.collect()
-    lcd.init()
+    # lcd.init()
+    lcd.clear()
     lcd.draw_string(0,0,'test',lcd.WHITE,lcd.BLACK)
     loading = image.Image(size=(lcd.width(), lcd.height()))
     # loading.draw_rectangle((0, 0, lcd.width(), lcd.height()), fill=True, color=(255, 0, 0))
@@ -371,7 +418,7 @@ print(banner)
 del banner
 from webai_blockly import Blockly_Init
 Blockly_Init()
-
+import webai_blockly
 
 
 import lcd, image, time
