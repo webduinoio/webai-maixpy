@@ -7,13 +7,18 @@ cmdFlag=True
 qrcodeFlag=True
 deployFlag=False
 try:
+    print("read cmd 1")
     with open('/flash/cmd.txt', 'r') as f:
         mqttJsonData = f.read()
     del f
+    gc.collect()
+    print("read cmd 2")
+    print("write cmd 1")
     with open('/flash/cmd.txt', 'w') as f:
         f.write("")
     del f
-    os.sync()
+    gc.collect()
+    print("write cmd 2")
     print("mqtt txt1:"+mqttJsonData)
     if mqttJsonData == "":
         print("cmd.txt content is null")
@@ -30,7 +35,7 @@ try:
         mqttJsonData = ujson.loads(mqttJsonData[mqttJsonData.find("/")+1:])
         print(mqttJsonData)
         takeMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'],
-                            1, mqttJsonData['url'], mqttJsonData['hashKey'])
+                            mqttJsonData['flip'], mqttJsonData['url'], mqttJsonData['hashKey'])
     elif mqttJsonData.find("_DOWNLOAD_MODEL/") == 0:
         mqttJsonData = ujson.loads(mqttJsonData[mqttJsonData.find("/")+1:])
         downloadModel(
@@ -46,14 +51,18 @@ try:
     else:
         print("mqtt txt2:"+mqttJsonData)
     del mqttJsonData
-
+    print("read qrocde 1")
     with open('/flash/qrcode.cmd', 'r') as f:
         QRCodeJsonData = f.read()
     del f
+    gc.collect()
+    print("read qrocde 2")
+    print("write qrocde 1")
     with open('/flash/qrcode.cmd', 'w') as f:
         f.write("")
     del f
-    os.sync()
+    gc.collect()
+    print("write qrocde 2")
     if QRCodeJsonData == "":
         print("qrcode.cmd content is null")
         qrcodeFlag=False
