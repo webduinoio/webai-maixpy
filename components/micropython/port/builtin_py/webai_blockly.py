@@ -107,7 +107,7 @@ def Blockly_Init():
     # fm.unregister(28)
     # del SYSTEM_AT_UART
 
-    del myLine, startTime, ifdata, endTime
+    del myLine, ifdata
 
     SYSTEM_DEFAULT_PATH = os.getcwd()
     if "flash" in SYSTEM_DEFAULT_PATH:
