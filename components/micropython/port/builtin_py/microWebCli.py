@@ -789,7 +789,6 @@ class MicroWebCli :
                             progressCallback(self, pgrSize, fSize)
                         except Exception as ex :
                             print('Error in progressCallback : %s' % ex)
-                file.flush()
                 file.close()
                 self.Close()
                 if sizeRem and sizeRem > 0 :
