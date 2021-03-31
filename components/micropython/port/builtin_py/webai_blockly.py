@@ -26,7 +26,7 @@ def Blockly_Init():
     global SYSTEM_ALLOCATE_LOCK
     SYSTEM_ALLOCATE_LOCK = _thread.allocate_lock()
     global SYSTEM_MQTT_CONNECT
-    SYSTEM_MQTT_CONNECT=False
+    SYSTEM_MQTT_CONNECT=True
 
     fpioaMapGPIO={
 '0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
@@ -296,10 +296,10 @@ def MQTT_CALLBACK(uartObj):
                 myLine = SYSTEM_LOG_UART.readline()
                 # print("callback:",myLine)
                 SUBSCRIBE_MSG = myLine.decode().strip()
-                if "mqttDisconnect" in myLine:
-                    SYSTEM_MQTT_CONNECT=False
-                if "subscribed" in myLine:
-                    SYSTEM_MQTT_CONNECT=True
+                # if "mqttDisconnect" in myLine:
+                #     SYSTEM_MQTT_CONNECT=False
+                # if "subscribed" in myLine:
+                #     SYSTEM_MQTT_CONNECT=True
                 if "mqtt" in SUBSCRIBE_MSG[0:4]:
                     SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
             if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
@@ -985,10 +985,10 @@ class Mqtt:
     # def __init__(self):
     #     pass
     def sub(topic):
-        while not SYSTEM_MQTT_CONNECT:
-            print("wait mqtt connect")
-            showMessage("wait mqtt connect",clear=True)
-            time.sleep(1)
+        # while not SYSTEM_MQTT_CONNECT:
+        #     print("wait mqtt connect")
+        #     showMessage("wait mqtt connect",clear=True)
+        #     time.sleep(1)
         global SYSTEM_THREAD_MQTT_FLAG
         SYSTEM_THREAD_MQTT_FLAG=True
         print("subscribe topic ...")
@@ -1005,20 +1005,20 @@ class Mqtt:
         time.sleep(0.5)
 
     def push(topic, msg):
-        while not SYSTEM_MQTT_CONNECT:
-            print("wait mqtt connect")
-            showMessage("wait mqtt connect",clear=True)
-            time.sleep(1)
+        # while not SYSTEM_MQTT_CONNECT:
+        #     print("wait mqtt connect")
+        #     showMessage("wait mqtt connect",clear=True)
+        #     time.sleep(1)
         mqttSetPush = 'AT+MQTT="push","{topic}","{msg}"'.format(topic=topic, msg=msg)
         # print(mqttSetPush)
         commCycle(mqttSetPush)
         time.sleep(0.15)
 
     def subID(topic):
-        while not SYSTEM_MQTT_CONNECT:
-            print("wait mqtt connect")
-            showMessage("wait mqtt connect",clear=True)
-            time.sleep(1)
+        # while not SYSTEM_MQTT_CONNECT:
+        #     print("wait mqtt connect")
+        #     showMessage("wait mqtt connect",clear=True)
+        #     time.sleep(1)
         global SYSTEM_THREAD_MQTT_FLAG
         SYSTEM_THREAD_MQTT_FLAG=True
         print("subscribeID topic ...")
@@ -1035,10 +1035,10 @@ class Mqtt:
         time.sleep(0.5)
 
     def pushID(topic, msg):
-        while not SYSTEM_MQTT_CONNECT:
-            print("wait mqtt connect")
-            showMessage("wait mqtt connect",clear=True)
-            time.sleep(1)
+        # while not SYSTEM_MQTT_CONNECT:
+        #     print("wait mqtt connect")
+        #     showMessage("wait mqtt connect",clear=True)
+        #     time.sleep(1)
         mqttSetPush = 'AT+MQTT="push","{mqttUID}/{topic}","{msg}"'.format(mqttUID=SYSTEM_ESP_DEVICE_ID, topic=topic, msg=msg)
         # print(mqttSetPush)
         commCycle(mqttSetPush)
