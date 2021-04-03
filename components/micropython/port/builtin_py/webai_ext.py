@@ -170,33 +170,4 @@ class Servo:
             return 110
 
 
-
-#    █████████           ████                        ███████    █████          ███                     █████   
-#   ███░░░░░███         ░░███                      ███░░░░░███ ░░███          ░░░                     ░░███    
-#  ███     ░░░   ██████  ░███   ██████  ████████  ███     ░░███ ░███████      █████  ██████   ██████  ███████  
-# ░███          ███░░███ ░███  ███░░███░░███░░███░███      ░███ ░███░░███    ░░███  ███░░███ ███░░███░░░███░   
-# ░███         ░███ ░███ ░███ ░███ ░███ ░███ ░░░ ░███      ░███ ░███ ░███     ░███ ░███████ ░███ ░░░   ░███    
-# ░░███     ███░███ ░███ ░███ ░███ ░███ ░███     ░░███     ███  ░███ ░███     ░███ ░███░░░  ░███  ███  ░███ ███
-#  ░░█████████ ░░██████  █████░░██████  █████     ░░░███████░   ████████      ░███ ░░██████ ░░██████   ░░█████ 
-#   ░░░░░░░░░   ░░░░░░  ░░░░░  ░░░░░░  ░░░░░        ░░░░░░░    ░░░░░░░░       ░███  ░░░░░░   ░░░░░░     ░░░░░  
-#                                                                         ███ ░███                             
-#                                                                        ░░██████                              
-#                                                                         ░░░░░░                               
-class ColorObject:
-    def findMax(img, threadshold, areaLimit=100, drawRectangle=True , drawPosition=False):
-        blobs = img.find_blobs([threadshold])
-        maxObject = None
-        if blobs:
-            for b in blobs:
-                val = b[2]*b[3]
-                if(val > areaLimit) :
-                    maxObject = b
-                    areaLimit = val
-        if(maxObject != None) :
-            if(drawPosition) :
-                img.draw_string(10,10,str(maxObject[0:4]))
-            if(drawRectangle) :
-                img.draw_rectangle(maxObject[0:4])
-        return maxObject
-
 print("load webai_ext finish")

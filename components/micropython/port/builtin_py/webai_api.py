@@ -1,4 +1,6 @@
 import webai_blockly
+import KPU as kpu
+
 def setWiFi(ssid,pwd):
     import machine
     with open('/flash/wifi.json','w') as f:
@@ -8,6 +10,7 @@ def setWiFi(ssid,pwd):
         # print(jsDumps)
         f.write(obj)
     machine.reset()
+
 def saveQRCode(url):
     import machine,os,ujson
     with open('/flash/cmd.txt','w') as f:
@@ -18,8 +21,10 @@ def saveQRCode(url):
     os.sync()
     print("reset")
     machine.reset()
+
 def tackYoloPic():
     print("b")
+
 def takeMobileNetPic(dsname,count,cameraFlip,url,hashKey):
     import sensor,image,lcd,time,math
     from fpioa_manager import *
