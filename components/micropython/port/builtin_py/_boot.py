@@ -181,17 +181,24 @@ try:
     msg="press L Play                press R Scan"
     lcd.draw_string(0,224,msg,lcd.RED,lcd.BLACK)
     del msg
+    clickTime=0
+    endTime=0
     while 1:
         if webai_blockly.SYSTEM_WiFiCheckCount<0:
             break
         if webai_blockly.SYSTEM_BTN_L.value()==0:
             break
         if webai_blockly.SYSTEM_WiFiCheckCount>0 and webai_blockly.SYSTEM_BTN_R.value()==0 :
+            # clickTimeStart = time.ticks_ms()
+            # while webai_blockly.SYSTEM_BTN_R.value()==0:
+            #     clickTimeEnd = time.ticks_ms()
+            # print(clickTimeEnd-clickTimeStart)
+            # if((clickTimeEnd-clickTimeStart) >= 10):
             qrcodeMode=True
             break
     tim.stop()
     tim.deinit()
-    del tim
+    del tim,clickTimeStart,clickTimeEnd
     # del webai_blockly.SYSTEM_WiFiCheckCount
     lcd.clear()
     flip=True
