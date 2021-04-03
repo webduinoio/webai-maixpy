@@ -3,6 +3,35 @@ from machine import Timer,PWM
 from fpioa_manager import fm
 from Maix import GPIO
 import gc,time
+
+# ██████╗ ██╗   ██╗███████╗███████╗███████╗██████╗ 
+# ██╔══██╗██║   ██║╚══███╔╝╚══███╔╝██╔════╝██╔══██╗
+# ██████╔╝██║   ██║  ███╔╝   ███╔╝ █████╗  ██████╔╝
+# ██╔══██╗██║   ██║ ███╔╝   ███╔╝  ██╔══╝  ██╔══██╗
+# ██████╔╝╚██████╔╝███████╗███████╗███████╗██║  ██║
+# ╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝
+
+class Buzzer:
+    def __init__(self):
+        self.timer_bee = Timer(Timer.TIMER1, Timer.CHANNEL0, mode=Timer.MODE_PWM)
+        self.pin_bee = PWM(self.timer_bee, freq=1000,duty=0,pin=24)
+        print('inint..')
+
+    def bee(self,tune,sec):
+        self.pin_bee.duty(50)
+        self.pin_bee.freq(tune)
+        time.sleep(sec)
+        self.pin_bee.duty(0)
+
+
+
+# ██╗██████╗ 
+# ██║██╔══██╗
+# ██║██████╔╝
+# ██║██╔══██╗
+# ██║██║  ██║
+# ╚═╝╚═╝  ╚═╝
+           
 class Ir:
     PINUSE=[]
     PINIO=[]
@@ -26,6 +55,17 @@ class Ir:
             __class__.PINUSE.append(PIN)
             __class__.PINIO.append(IO)
             return IO.value()
+
+
+
+#  █████             ███    ███████   
+# ░░███            ███░   ███░░░░░███ 
+#  ░███          ███░    ███     ░░███
+#  ░███        ███░     ░███      ░███
+#  ░███      ███░       ░███      ░███
+#  ░███    ███░         ░░███     ███ 
+#  █████ ███░            ░░░███████░  
+# ░░░░░ ░░░                ░░░░░░░    
 
 class Io:
     PWMPINUSE=[]
@@ -86,6 +126,15 @@ class Io:
                 __class__.PINUSE.append(PIN)
                 __class__.PINIO.append(IO)
 
+#   █████████                                         
+#  ███░░░░░███                                        
+# ░███    ░░░   ██████  ████████  █████ █████  ██████ 
+# ░░█████████  ███░░███░░███░░███░░███ ░░███  ███░░███
+#  ░░░░░░░░███░███████  ░███ ░░░  ░███  ░███ ░███ ░███
+#  ███    ░███░███░░░   ░███      ░░███ ███  ░███ ░███
+# ░░█████████ ░░██████  █████      ░░█████   ░░██████ 
+#  ░░░░░░░░░   ░░░░░░  ░░░░░        ░░░░░     ░░░░░░  
+                                                    
 class Servo:
     PWMPINUSE=[]
     ANGLELIST=[]
@@ -119,5 +168,35 @@ class Servo:
         else:
             # print("false")
             return 110
+
+
+
+#    █████████           ████                        ███████    █████          ███                     █████   
+#   ███░░░░░███         ░░███                      ███░░░░░███ ░░███          ░░░                     ░░███    
+#  ███     ░░░   ██████  ░███   ██████  ████████  ███     ░░███ ░███████      █████  ██████   ██████  ███████  
+# ░███          ███░░███ ░███  ███░░███░░███░░███░███      ░███ ░███░░███    ░░███  ███░░███ ███░░███░░░███░   
+# ░███         ░███ ░███ ░███ ░███ ░███ ░███ ░░░ ░███      ░███ ░███ ░███     ░███ ░███████ ░███ ░░░   ░███    
+# ░░███     ███░███ ░███ ░███ ░███ ░███ ░███     ░░███     ███  ░███ ░███     ░███ ░███░░░  ░███  ███  ░███ ███
+#  ░░█████████ ░░██████  █████░░██████  █████     ░░░███████░   ████████      ░███ ░░██████ ░░██████   ░░█████ 
+#   ░░░░░░░░░   ░░░░░░  ░░░░░  ░░░░░░  ░░░░░        ░░░░░░░    ░░░░░░░░       ░███  ░░░░░░   ░░░░░░     ░░░░░  
+#                                                                         ███ ░███                             
+#                                                                        ░░██████                              
+#                                                                         ░░░░░░                               
+class ColorObject:
+    def findMax(img, threadshold, areaLimit=100, drawRectangle=True , drawPosition=False):
+        blobs = img.find_blobs([threadshold])
+        maxObject = None
+        if blobs:
+            for b in blobs:
+                val = b[2]*b[3]
+                if(val > areaLimit) :
+                    maxObject = b
+                    areaLimit = val
+        if(maxObject != None) :
+            if(drawPosition) :
+                img.draw_string(10,10,str(maxObject[0:4]))
+            if(drawRectangle) :
+                img.draw_rectangle(maxObject[0:4])
+        return maxObject
 
 print("load webai_ext finish")
