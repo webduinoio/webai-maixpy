@@ -1186,10 +1186,10 @@ class Mqtt:
     # def __init__(self):
     #     pass
     def sub(topic):
-        # while not SYSTEM_MQTT_CONNECT:
-        #     print("wait mqtt connect")
-        #     showMessage("wait mqtt connect",clear=True)
-        #     time.sleep(1)
+        while not SYSTEM_MQTT_CONNECT:
+            print("wait mqtt connect")
+            showMessage("wait mqtt connect",clear=True)
+            time.sleep(1)
         global SYSTEM_THREAD_MQTT_FLAG
         SYSTEM_THREAD_MQTT_FLAG=True
         print("subscribe topic ...")
@@ -1206,20 +1206,20 @@ class Mqtt:
         time.sleep(0.5)
 
     def push(topic, msg):
-        # while not SYSTEM_MQTT_CONNECT:
-        #     print("wait mqtt connect")
-        #     showMessage("wait mqtt connect",clear=True)
-        #     time.sleep(1)
+        while not SYSTEM_MQTT_CONNECT:
+            print("wait mqtt connect")
+            showMessage("wait mqtt connect",clear=True)
+            time.sleep(1)
         mqttSetPush = 'AT+MQTT="push","{topic}","{msg}"'.format(topic=topic, msg=msg)
         # print(mqttSetPush)
         commCycle(mqttSetPush)
         time.sleep(0.15)
 
     def subID(topic):
-        # while not SYSTEM_MQTT_CONNECT:
-        #     print("wait mqtt connect")
-        #     showMessage("wait mqtt connect",clear=True)
-        #     time.sleep(1)
+        while not SYSTEM_MQTT_CONNECT:
+            print("wait mqtt connect")
+            showMessage("wait mqtt connect",clear=True)
+            time.sleep(1)
         global SYSTEM_THREAD_MQTT_FLAG
         SYSTEM_THREAD_MQTT_FLAG=True
         print("subscribeID topic ...")
@@ -1236,10 +1236,10 @@ class Mqtt:
         time.sleep(0.5)
 
     def pushID(topic, msg):
-        # while not SYSTEM_MQTT_CONNECT:
-        #     print("wait mqtt connect")
-        #     showMessage("wait mqtt connect",clear=True)
-        #     time.sleep(1)
+        while not SYSTEM_MQTT_CONNECT:
+            print("wait mqtt connect")
+            showMessage("wait mqtt connect",clear=True)
+            time.sleep(1)
         mqttSetPush = 'AT+MQTT="push","{mqttUID}/{topic}","{msg}"'.format(mqttUID=SYSTEM_ESP_DEVICE_ID, topic=topic, msg=msg)
         # print(mqttSetPush)
         commCycle(mqttSetPush)
@@ -1352,6 +1352,8 @@ def readUID(timeout=2000):
 
 
 def showMessage(msg, x=-1, y=0, center=True, clear=False):
+    if msg=="":
+        msg=" "
     if clear:
         lcd.clear()
     if center:

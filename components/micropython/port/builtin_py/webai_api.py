@@ -41,7 +41,7 @@ def takeMobileNetPic(dsname,count,cameraFlip,url,hashKey):
     sensor.set_windowing((224, 224))
     sensor.skip_frames(time = 2000)
 
-    sensor.set_vflip(cameraFlip)
+    sensor.set_vflip(int(cameraFlip))
 
     sensor.set_auto_gain(1)
     sensor.set_auto_whitebal(1)
@@ -313,7 +313,8 @@ def downloadModel(fileName,modelType,url,isFile=False):
         err = 0
         while 1:
             try:
-                wlan.connect(WIFI_SSID, WIFI_PASW)
+                # wlan.connect(WIFI_SSID, WIFI_PASW)
+                pass
             except Exception:
                 err += 1
                 print("Connect AP failed, now try again")
@@ -338,6 +339,7 @@ def downloadModel(fileName,modelType,url,isFile=False):
             onlineCheck += 1
         time.sleep(0.5)
     print("end")
+    showMessage("",clear=True)
     # bak = time.ticks()
     start = time.time()
     print('start', start)
@@ -558,7 +560,8 @@ def downloadFile(fileName,url):
         err = 0
         while 1:
             try:
-                wlan.connect(WIFI_SSID, WIFI_PASW)
+                # wlan.connect(WIFI_SSID, WIFI_PASW)
+                pass
             except Exception:
                 err += 1
                 print("Connect AP failed, now try again")
@@ -583,18 +586,22 @@ def downloadFile(fileName,url):
             onlineCheck += 1
         time.sleep(0.5)
     print("end")
+    showMessage("",clear=True)
     # bak = time.ticks()
     start = time.time()
     print('start', start)
-    from microWebCli import MicroWebCli
-    def progressCallback(microWebCli, progressSize, totalSize) :
-        if totalSize :
-            print('Progress: %d bytes of %d downloaded...' % (progressSize, totalSize))
-        else :
-            print('Progress: %d bytes downloaded...' % progressSize)
-    contentType = MicroWebCli.FileRequest(url, "/"+webai_blockly.SYSTEM_DEFAULT_PATH+"/"+fileName, progressCallback)
-    print('File of content type "%s" was saved to "%s"' % (contentType, fileName))
-    os.sync()
+    if onlineStatus:
+        from microWebCli import MicroWebCli
+        def progressCallback(microWebCli, progressSize, totalSize) :
+            if totalSize :
+                print('Progress: %d bytes of %d downloaded...' % (progressSize, totalSize))
+            else :
+                print('Progress: %d bytes downloaded...' % progressSize)
+        contentType = MicroWebCli.FileRequest(url, "/"+webai_blockly.SYSTEM_DEFAULT_PATH+"/"+fileName, progressCallback)
+        print('File of content type "%s" was saved to "%s"' % (contentType, fileName))
+        os.sync()
+    else:
+        showMessage("network error",clear=True)
 
 def uploadPic(dsname,count,url,hashKey):
     from fpioa_manager import fm
@@ -630,7 +637,8 @@ def uploadPic(dsname,count,url,hashKey):
         err = 0
         while 1:
             try:
-                wlan.connect(WIFI_SSID, WIFI_PASW)
+                # wlan.connect(WIFI_SSID, WIFI_PASW)
+                pass
             except Exception:
                 err += 1
                 print("Connect AP failed, now try again")
@@ -655,6 +663,7 @@ def uploadPic(dsname,count,url,hashKey):
             onlineCheck += 1
         time.sleep(0.5)
     print("end")
+    showMessage("",clear=True)
     del wifiStatusPin,WIFI_SSID,WIFI_PASW,onlineCheck,offlineCheck,wlan,err
     gc.collect()
     if onlineStatus:
@@ -930,6 +939,355 @@ def OTAWiFi():
         webai_blockly.SYSTEM_MQTT_CALLBACK_FLAG=True
     del printLogVersion,startTime,endTime,ifdata,timeout,myLine
     gc.collect()
+
+def OTAK210(otaname):
+    # global webai_blockly.SYSTEM_AT_UART
+    import time
+    import network
+    from machine import UART
+    from fpioa_manager import fm
+    from Maix import GPIO
+    import gc
+    import time
+    from webai_blockly import showMessage,lcd
+    from webai_blockly import commCycle
+    bak = time.ticks()
+    fm.register(19, fm.fpioa.GPIOHS0)
+    wifiStatusPin = GPIO(GPIO.GPIOHS0, GPIO.IN)
+
+    class MiniHttp:
+
+        def readline(self):
+            # return self.raw.readline() # mpy
+            data = b""
+            while True:
+                tmp = self.raw.recv(1)
+                data += tmp
+                if tmp == b'\n':
+                    break
+            return data
+
+        def write(self, data):
+            # return self.raw.write(data) # mpy
+            self.raw.send(bytes(data))
+
+        def read(self, len):
+            return self.raw.read(len) # mpy
+            # return self.raw.recv(len)
+
+        def __init__(self):
+            self.raw = None
+
+        def connect(self, url, timeout=2):
+            try:
+                proto, dummy, host, path = url.split("/", 3)
+            except ValueError:
+                proto, dummy, host = url.split("/", 2)
+                path = ""
+
+            if proto == "http:":
+                port = 80
+            elif proto == "https:":
+                port = 443
+            else:
+                raise ValueError("Unsupported protocol: " + proto)
+
+            if ":" in host:
+                host, port = host.split(":", 1)
+                port = int(port)
+
+            import socket
+            ai = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+            ai = ai[0]
+            if self.raw is not None:
+                self.raw.close()
+            raw = socket.socket(ai[0], ai[1], ai[2])
+            raw.settimeout(timeout)
+
+            raw.connect(ai[-1])
+            if proto == "https:":
+                import ussl as ssl
+                raw = ssl.wrap_socket(raw, server_hostname=host)
+            self.raw = raw
+            self.host = bytes(host, "utf-8")
+            self.path = bytes(path, "utf-8")
+
+        def exit(self):
+            if self.raw != None:
+                self.raw.close()
+                self.raw = None
+
+        def request(self, method, headers={}, data=None):
+            try:
+                self.headers = headers
+                self.write(b"%s /%s HTTP/1.1\r\n" % (method, self.path))
+                if not "Host" in headers:
+                    self.write(b"Host: %s\r\n" % self.host)
+                # Iterate over keys to avoid tuple alloc
+                for k in headers:
+                    self.write(k)
+                    self.write(b": ")
+                    self.write(headers[k])
+                    self.write(b"\r\n")
+                if data:
+                    self.write(b"Content-Length: %d\r\n" % len(data))
+                self.write(b"\r\n")
+                if data:
+                    self.write(data)
+                l = self.readline()
+                # print(l)
+                l = l.split(None, 2)
+                status = int(l[1])
+                reason = ""
+                response = {}
+                if len(l) > 2:
+                    reason = l[2].rstrip()
+                while True:
+                    l = self.readline()
+                    if not l or l == b"\r\n":
+                        break
+                    if l.startswith(b"Transfer-Encoding:"):
+                        if b"chunked" in l:
+                            raise ValueError("Unsupported " + l)
+                    # elif l.startswith(b"Location:") and not 200 <= status <= 299:
+                        # raise NotImplementedError("Redirects not yet supported")
+                    try:
+                        tmp = l.split(b': ')
+                        response[tmp[0]] = tmp[1][:-2]
+                    except Exception as e:
+                        print(e)
+            except OSError:
+                self.exit()
+                raise
+            return (status, reason, response)
+
+
+    # fm.register(27, fm.fpioa.UART2_TX, force=True)
+    # fm.register(28, fm.fpioa.UART2_RX, force=True)
+    # webai_blockly.SYSTEM_AT_UART = UART(UART.UART2, 115200*1, timeout=5000, read_buf_len=40960)
+    # showMessage("upgrade speed",clear=True)
+    # pin8285=20
+    # fm.register(pin8285, fm.fpioa.GPIO0)
+    # reset=GPIO(GPIO.GPIO0,GPIO.OUT)
+    # reset.value(0)
+    # time.sleep(0.2)
+    # reset.value(1)
+    # fm.unregister(pin8285)
+    # myLine=''
+    # while not "init finish" in myLine:
+    #     while not webai_blockly.SYSTEM_AT_UART.any():
+    #         #time.sleep(1)
+    #         #print("not data")
+    #         pass
+    #     myLine = webai_blockly.SYSTEM_AT_UART.readline()
+    #     print(myLine)
+    # time.sleep(0.5)
+    #webai_blockly.SYSTEM_AT_UART = UART(UART.UART2, 115200, timeout=5000, read_buf_len=40960)
+    # time.sleep(1)
+    #commCycle(webai_blockly.SYSTEM_AT_UART,"AT+GMR")
+    # print("uid:"+readUID(webai_blockly.SYSTEM_AT_UART))
+    # print(globals())
+    # print(help(webai_blockly.SYSTEM_AT_UART))
+    # commCycle(webai_blockly.SYSTEM_AT_UART,"AT+GMR")
+    #webai_blockly.SYSTEM_AT_UART.write("AT+GMR"+"\r\n")    # Version
+    #myLine = ''
+    #while not "OK" in myLine:
+        #while not webai_blockly.SYSTEM_AT_UART.any():
+            #pass
+        #myLine = webai_blockly.SYSTEM_AT_UART.readline()
+        #print(myLine)
+    #global uart3
+    #uart3=webai_blockly.SYSTEM_AT_UART
+    showMessage("initialize...",clear=True)
+    speed = 115200*40
+    commCycle("AT+UART_CUR="+str(speed)+",8,1,0,0")
+    time.sleep(0.5)
+    webai_blockly.SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
+    WIFI_SSID = ""
+    WIFI_PASW = ""
+    onlineStatus=True
+    import ujson
+    try:
+        with open('/flash/wifi.json','r') as f:
+            jsDumps = ujson.load(f)
+            print(jsDumps)
+            WIFI_SSID=jsDumps['ssid']
+            WIFI_PASW=jsDumps['pwd']
+            del jsDumps
+        del f
+    except Exception as e:
+        print(e)
+        print("not setting wifi")
+        onlineStatus=False
+    if onlineStatus==True:
+        # wlan = ""
+        # err = ""
+        wlan = network.ESP8285(webai_blockly.SYSTEM_AT_UART)
+        err = 0
+        while 1:
+            try:
+                pass
+                # wlan.connect(WIFI_SSID, WIFI_PASW)
+            except Exception:
+                err += 1
+                print("Connect AP failed, now try again")
+                if err > 1:
+                    break
+                #raise Exception("Conenct AP fail")
+                continue
+            break
+    onlineCheck = 0
+    offlineCheck = 0
+    print("start check")
+    while onlineCheck < 2:
+        if wifiStatusPin.value() == 0:
+            print("offline")
+            offlineCheck+=1
+            if offlineCheck > 2:
+                showMessage("init error",clear=True)
+                onlineStatus=False
+                #sys.exit()
+        else:
+            print("online")
+            onlineCheck += 1
+        time.sleep(0.5)
+    print("end")
+    showMessage("",clear=True)
+    # bak = time.ticks()
+    start = time.time()
+    print('start', start)
+
+    #{"type":"download","function":"downloadModel","fileName":"????","url":"http://???????"}
+
+    # fileName="gigoFinal.kmodel"
+    # url = 'http://ota.webduino.io/WebAiOTA/monster(green,red,yellow,blue)gcp.kmodel'
+    # modelType = "mobileNet"
+    modelAddress=0x20000
+    url = 'http://ota.webduino.io/WebAiOTA/firmware/'+otaname+'.bin'
+    if "std" in otaname:
+        modelAddress=0x20000
+    elif "mini" in otaname:
+        modelAddress=0x2A0000
+    downloadStatus=False
+    try:
+        if onlineStatus == True:
+            from Maix import utils
+            tmp = MiniHttp()
+            filename, file_pos, filesize = b'', 0, 0
+            block_size = 20480
+            block_size = 30720
+            block_size = 40000
+            errCount=0
+            while True:
+                try:
+                    if tmp.raw is None:
+                        print("connect 1")
+                        tmp.connect(url, 10)
+                        print("connect 2")
+                    else:
+                        if filesize == 0:
+                            print("connect 3")
+                            res = tmp.request(b"HEAD", {b'Connection': b'keep-alive'})
+                            print(res)
+                            if res[0] == 200:
+                                # b'Accept-Ranges': b'bytes' b'Content-Length': b'16'
+                                print(res[1])
+                                file_pos = 0
+                                # print(res[2])
+                                # b'attachment; filename="test.bin";'
+                                #filename = res[2][b'Content-Disposition'].split(b"=")[1][1:-2]
+                                filesize = int(res[2][b'Content-Length'], 10)
+                        else:
+                            errCount=0
+                            file_end = file_pos + block_size
+                            if file_end > filesize:
+                                file_end = filesize
+                            headers = {
+                                    b'Connection': b'keep-alive',
+                                    b'Range': b'bytes=%d-%d' % (file_pos, file_end - 1)
+                            }
+                            # print(headers)
+                            res = tmp.request(b"GET", headers)
+                            # print(res[0], res[1])
+                            print("debug1")
+                            print(res[2][b'Content-Length'])
+                            # print(res[2][b'Content-Range'].split(b'/'))
+                            data = tmp.read(int(res[2][b'Content-Length'], 10))
+                            try:
+                                print(file_pos, len(data))
+                                print("debug2")
+                            except Exception as f:
+                                print(f)
+                                print("len err")
+                                continue
+                            try:
+                                if len(data) == (file_end - file_pos):
+                                    print("debug3")
+                                    print("write1")
+                                    utils.flash_write(modelAddress + file_pos, data)
+                                    print("write2")
+                                    showMessage("download %s"%str(int(file_pos/filesize*100))+"%")
+                                    showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+                                    if file_end == filesize:
+                                        downloadStatus=True
+                                        showMessage("please wait",clear=True)
+                                        showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+                                        break
+                                    else:
+                                        file_pos = file_end
+                                else:
+                                    print("len(data)!=end-pos")
+                            except Exception as f:
+                                print(f)
+                                print("len err")
+                                continue
+
+                except Exception as e:
+                    print(e)
+                    #showMessage("error",clear=True)
+                    print("errorCount:"+str(errCount))
+                    time.sleep(2)
+                    errCount+=1
+                    if errCount>2:
+                        raise e
+        else:
+            showMessage("network error",clear=True)
+    except Exception as f:
+        print(f)
+        print("error>2")
+    finally:
+        if onlineStatus==True:
+            try:
+                tmp.exit()
+            except Exception as e:
+                print(e)
+                print("http close error")
+        if downloadStatus==True:
+            showMessage("ok",clear=True)
+            # utils.flash_write(0x7FFFF,bytes([1]))
+            # import machine
+            # machine.reset()
+        else:
+            showMessage("error",clear=True)
+        print("reset speed")
+        # print("uid:"+readUID(webai_blockly.SYSTEM_AT_UART))
+        while webai_blockly.SYSTEM_AT_UART.any():
+            webai_blockly.SYSTEM_AT_UART.readline()
+        time.sleep(1)
+        speed = 115200
+        commCycle("AT+UART_CUR="+str(speed)+",8,1,0,0")
+
+
+        webai_blockly.SYSTEM_AT_UART = UART(UART.UART2, speed, timeout=5000, read_buf_len=40960)
+        showMessage("error",clear=True)
+        showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
+        # msg="                            press R Back"
+        # lcd.draw_string(0,223,msg,lcd.RED,lcd.BLACK)
+        # while 1:
+        #     if(webai_blockly.SYSTEM_BTN_R.value()==0):
+        #         break
+        print(filename, filesize, round(time.time() - start, 1), 'over')
+        print('total time ', time.ticks() - bak)
 
 print("load webai_api finish")
     
