@@ -20,6 +20,7 @@
 
 #define OMV_MINIMUM
 #define IMLIB_ENABLE_QRCODES
+#define IMLIB_ENABLE_BARCODES
 
 
 /////////////////////////////////////////////////////////////////////////
