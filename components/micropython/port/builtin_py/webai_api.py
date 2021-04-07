@@ -349,10 +349,7 @@ def downloadModel(fileName,modelType,url,isFile=False):
     # fileName="gigoFinal.kmodel"
     # url = 'http://ota.webduino.io/WebAiOTA/monster(green,red,yellow,blue)gcp.kmodel'
     # modelType = "mobileNet"
-    if modelType=="yolo":
-        modelAddress=0x780000
-    else:
-        modelAddress=0x950000
+    modelAddress=0xD40000
     url="http"+url[url.find(":"):]
     downloadStatus=False
     try:

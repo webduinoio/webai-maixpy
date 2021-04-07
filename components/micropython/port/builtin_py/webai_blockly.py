@@ -485,7 +485,7 @@ class Lcd:
         lcd.display(self.img)
 
     def drawString(self, x, y, text, color=(255,255,255), scale=2, x_spacing=20, mono_space=False):
-        self.image.font_load(self.image.UTF8, 16, 16, 0x280000)
+        self.image.font_load(self.image.UTF8, 16, 16, 0x980000)
         self.img.draw_string(x, y, text, scale=scale, color=color, x_spacing=x_spacing, mono_space=mono_space)
         self.image.font_free()
         lcd.display(self.img)
@@ -966,7 +966,7 @@ class ObjectTracking():
             # classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
             cwd=SYSTEM_DEFAULT_PATH
             if cwd=="flash":
-                model=0x780000
+                model=0xD40000
             else:
                 model="/sd/"+model+".kmodel"
             self.classes=classes
@@ -1056,7 +1056,7 @@ class ImageClassification():
             # classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
             cwd=SYSTEM_DEFAULT_PATH
             if cwd=="flash":
-                model=0x950000
+                model=0xD40000
             else:
                 model="/sd/"+model+".kmodel"
             self.classes=classes

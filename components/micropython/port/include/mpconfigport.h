@@ -436,6 +436,7 @@ extern const struct _mp_obj_module_t mp_module_touchscreen;
 #define MICROPY_HW_MCU_NAME "kendryte-k210"
 #define MICROPY_PY_SYS_PLATFORM "MaixPy"
 
+// 保留暫時不用
 #define WebAI_K210_Major_Version "0"
 #define WebAI_K210_Minor_Version "1"
 #define WebAI_K210_Revision_Number "9"
@@ -444,9 +445,9 @@ extern const struct _mp_obj_module_t mp_module_touchscreen;
 
 #define WebAI_Version "0"
 #define WebAI_K210_Version "9"
-#define WebAI_WiFi_Version "8"
-#define WebAI_Build_Date "0331"
-#define WebAI_Build_Number "02"
+#define WebAI_WiFi_Version "9"
+#define WebAI_Build_Date "0406"
+#define WebAI_Build_Number "01"
 
 #ifdef __linux__
 #define MICROPY_MIN_USE_STDOUT (1)

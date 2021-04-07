@@ -189,13 +189,14 @@ try:
         if webai_blockly.SYSTEM_BTN_L.value()==0:
             break
         if webai_blockly.SYSTEM_WiFiCheckCount>0 and webai_blockly.SYSTEM_BTN_R.value()==0 :
-            # clickTimeStart = time.ticks_ms()
-            # while webai_blockly.SYSTEM_BTN_R.value()==0:
-            #     clickTimeEnd = time.ticks_ms()
-            # print(clickTimeEnd-clickTimeStart)
-            # if((clickTimeEnd-clickTimeStart) >= 10):
-            qrcodeMode=True
-            break
+            clickTimeStart = time.ticks_ms()
+            while webai_blockly.SYSTEM_BTN_R.value()==0:
+                clickTimeEnd = time.ticks_ms()
+            print(clickTimeEnd-clickTimeStart)
+            if((clickTimeEnd-clickTimeStart) >= 10):
+                print('press btn > 10ms')
+                qrcodeMode=True
+                break
     tim.stop()
     tim.deinit()
     del tim,clickTimeStart,clickTimeEnd
