@@ -1229,6 +1229,7 @@ def OTAK210(otaname):
                                     showMessage("download %s"%str(int(file_pos/filesize*100))+"%")
                                     showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)
                                     if file_end == filesize:
+                                        print("downloadStatus:",downloadStatus)
                                         downloadStatus=True
                                         showMessage("please wait",clear=True)
                                         showMessage("total time:"+str(int((time.ticks() - bak)/1000))+" seconds",x=-1,y=6,center=False,clear=False)

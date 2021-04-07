@@ -419,6 +419,7 @@ __      _____| |__   __| |_   _ _ _ __   ___
   \_/\_/ \___|_.__/ \__,_|\__,_|_|_| |_|\___/ 
                                               
 Official Site : https://webduino.io
+full
 '''
 print(banner)
 del banner
