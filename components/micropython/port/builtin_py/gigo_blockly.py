@@ -3,10 +3,16 @@ from machine import Timer,PWM
 from fpioa_manager import fm
 from Maix import GPIO
 import gc,time
+
+PWMPINUSE=[]
+PINUSE=[]
+PINIO=[]
+ANGLELIST=[]
+
 class DDM:
-    PWMPINUSE=[]
-    PINUSE=[]
-    PINIO=[]
+    # PWMPINUSE=[]
+    # PINUSE=[]
+    # PINIO=[]
     DUTY=60
     def setup(PWMPIN,PIN,PWM_FREQ=50,VALUE=1):
         USER_PWM_LIST_COUNT=len(webai_blockly.USER_PWM_LIST)
@@ -17,19 +23,19 @@ class DDM:
                 BLOCKLY_SYSTEM_TIMER=1
             PWMPIN=webai_blockly.fpioaMapGPIO[PWMPIN]
             PIN=webai_blockly.fpioaMapGPIO[PIN]
-            if PWMPIN in __class__.PWMPINUSE:
-                webai_blockly.USER_PWM_LIST[__class__.PWMPINUSE.index(PWMPIN)].duty(__class__.DUTY)
-                __class__.PINIO[__class__.PINUSE.index(PIN)].value(VALUE)
+            if PWMPIN in PWMPINUSE:
+                webai_blockly.USER_PWM_LIST[PWMPINUSE.index(PWMPIN)].duty(__class__.DUTY)
+                PINIO[PINUSE.index(PIN)].value(VALUE)
             else:
                 TIMER=Timer(BLOCKLY_SYSTEM_TIMER,USER_PWM_LIST_COUNT%4, mode=Timer.MODE_PWM)
                 DDM_PWM = PWM(TIMER,freq=PWM_FREQ, duty=__class__.DUTY, pin=PWMPIN[0])
-                __class__.PWMPINUSE.append(PWMPIN)
+                PWMPINUSE.append(PWMPIN)
                 webai_blockly.USER_PWM_LIST.append(DDM_PWM)
                 fm.register(PIN[0], PIN[1],force=True)
                 IO=GPIO(PIN[2],GPIO.OUT)
                 IO.value(VALUE)
-                __class__.PINUSE.append(PIN)
-                __class__.PINIO.append(IO)
+                PINUSE.append(PIN)
+                PINIO.append(IO)
         else:
             raise Exception("DDM error")
 
@@ -42,18 +48,18 @@ class DDM:
                 BLOCKLY_SYSTEM_TIMER=1
             PWMPIN=webai_blockly.fpioaMapGPIO[PWMPIN]
             PIN=webai_blockly.fpioaMapGPIO[PIN]
-            if PWMPIN in __class__.PWMPINUSE:
-                webai_blockly.USER_PWM_LIST[__class__.PWMPINUSE.index(PWMPIN)].duty(VALUE)
+            if PWMPIN in PWMPINUSE:
+                webai_blockly.USER_PWM_LIST[PWMPINUSE.index(PWMPIN)].duty(VALUE)
             else:
                 TIMER=Timer(BLOCKLY_SYSTEM_TIMER,USER_PWM_LIST_COUNT%4, mode=Timer.MODE_PWM)
                 DDM_PWM = PWM(TIMER,freq=PWM_FREQ, duty=VALUE, pin=PWMPIN[0])
-                __class__.PWMPINUSE.append(PWMPIN)
+                PWMPINUSE.append(PWMPIN)
                 webai_blockly.USER_PWM_LIST.append(DDM_PWM)
                 fm.register(PIN[0], PIN[1],force=True)
                 IO=GPIO(PIN[2],GPIO.OUT)
                 IO.value(VALUE)
-                __class__.PINUSE.append(PIN)
-                __class__.PINIO.append(IO)
+                PINUSE.append(PIN)
+                PINIO.append(IO)
             __class__.DUTY=VALUE
         else:
             raise Exception("DDM error")
@@ -101,9 +107,9 @@ class DDM:
     #     self.IO.value(self.INVERT)
 
 class Led:
-    PWMPINUSE=[]
-    PINUSE=[]
-    PINIO=[]
+    # PWMPINUSE=[]
+    # PINUSE=[]
+    # PINIO=[]
     def write(PINNONE=None,PIN=None,PWMMODE=False,PWM_FREQ=50,VALUE=0):
         if PWMMODE:
             USER_PWM_LIST_COUNT=len(webai_blockly.USER_PWM_LIST)
@@ -113,25 +119,25 @@ class Led:
                 else:
                     BLOCKLY_SYSTEM_TIMER=1
                 PIN=webai_blockly.fpioaMapGPIO[PIN]
-                if PIN in __class__.PWMPINUSE:
-                    webai_blockly.USER_PWM_LIST[__class__.PWMPINUSE.index(PIN)].duty(VALUE)
+                if PIN in PWMPINUSE:
+                    webai_blockly.USER_PWM_LIST[PWMPINUSE.index(PIN)].duty(VALUE)
                 else:
                     TIMER=Timer(BLOCKLY_SYSTEM_TIMER,USER_PWM_LIST_COUNT%4, mode=Timer.MODE_PWM)
                     Led_PWM = PWM(TIMER,freq=PWM_FREQ, duty=VALUE, pin=PIN[0])
-                    __class__.PWMPINUSE.append(PIN)
+                    PWMPINUSE.append(PIN)
                     webai_blockly.USER_PWM_LIST.append(Led_PWM)
             else:
                 raise Exception("Led error")
         else:
             PIN=webai_blockly.fpioaMapGPIO[PIN]
-            if PIN in __class__.PINUSE:
-                __class__.PINIO[__class__.PINUSE.index(PIN)].value(VALUE)
+            if PIN in PINUSE:
+                PINIO[PINUSE.index(PIN)].value(VALUE)
             else:
                 fm.register(PIN[0], PIN[1],force=True)
                 IO=GPIO(PIN[2],GPIO.OUT)
                 IO.value(VALUE)
-                __class__.PINUSE.append(PIN)
-                __class__.PINIO.append(IO)
+                PINUSE.append(PIN)
+                PINIO.append(IO)
     # def __init__(self,DIGITAL=True,PINNONE=None,PIN=None):
     #     self.DIGITAL=DIGITAL
     #     if(DIGITAL):
@@ -177,23 +183,23 @@ class Button:
     PINIO=[]
     def io(PIN=None,PINNONE=None):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PINUSE:
-            return __class__.PINIO[__class__.PINUSE.index(PIN)]
+        if PIN in PINUSE:
+            return PINIO[PINUSE.index(PIN)]
         else:
             fm.register(PIN[0], PIN[1],force=True)
             IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
-            __class__.PINUSE.append(PIN)
-            __class__.PINIO.append(IO)
+            PINUSE.append(PIN)
+            PINIO.append(IO)
             return IO
     def read(PIN=None,PINNONE=None):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PINUSE:
-            return __class__.PINIO[__class__.PINUSE.index(PIN)].value()
+        if PIN in PINUSE:
+            return PINIO[PINUSE.index(PIN)].value()
         else:
             fm.register(PIN[0], PIN[1],force=True)
             IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
-            __class__.PINUSE.append(PIN)
-            __class__.PINIO.append(IO)
+            PINUSE.append(PIN)
+            PINIO.append(IO)
             return IO.value()
     # def __init__(self,PIN=None,PINNONE=None):
     #     self.PIN=webai_blockly.fpioaMapGPIO[PIN]
@@ -213,23 +219,23 @@ class Ir:
     PINIO=[]
     def io(PIN):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PINUSE:
-            return __class__.PINIO[__class__.PINUSE.index(PIN)]
+        if PIN in PINUSE:
+            return PINIO[PINUSE.index(PIN)]
         else:
             fm.register(PIN[0], PIN[1],force=True)
             IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
-            __class__.PINUSE.append(PIN)
-            __class__.PINIO.append(IO)
+            PINUSE.append(PIN)
+            PINIO.append(IO)
             return IO
     def read(PIN):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PINUSE:
-            return __class__.PINIO[__class__.PINUSE.index(PIN)].value()
+        if PIN in PINUSE:
+            return PINIO[PINUSE.index(PIN)].value()
         else:
             fm.register(PIN[0], PIN[1],force=True)
             IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
-            __class__.PINUSE.append(PIN)
-            __class__.PINIO.append(IO)
+            PINUSE.append(PIN)
+            PINIO.append(IO)
             return IO.value()
     # def __init__(self,PIN):
     #     self.PIN=webai_blockly.fpioaMapGPIO[PIN]
@@ -251,28 +257,28 @@ class Ir:
 
 
 class Io:
-    PWMPINUSE=[]
-    PINUSE=[]
-    PINIO=[]
+    # PWMPINUSE=[]
+    # PINUSE=[]
+    # PINIO=[]
     def io(PIN):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PINUSE:
-            return __class__.PINIO[__class__.PINUSE.index(PIN)]
+        if PIN in PINUSE:
+            return PINIO[PINUSE.index(PIN)]
         else:
             fm.register(PIN[0], PIN[1],force=True)
             IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
-            __class__.PINUSE.append(PIN)
-            __class__.PINIO.append(IO)
+            PINUSE.append(PIN)
+            PINIO.append(IO)
             return IO
     def read(PIN):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PINUSE:
-            return __class__.PINIO[__class__.PINUSE.index(PIN)].value()
+        if PIN in PINUSE:
+            return PINIO[PINUSE.index(PIN)].value()
         else:
             fm.register(PIN[0], PIN[1],force=True)
             IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
-            __class__.PINUSE.append(PIN)
-            __class__.PINIO.append(IO)
+            PINUSE.append(PIN)
+            PINIO.append(IO)
             return IO.value()
     def write(PIN,PWMMODE=False,PWM_FREQ=50,VALUE=0):
         if PWMMODE:
@@ -283,31 +289,31 @@ class Io:
                 else:
                     BLOCKLY_SYSTEM_TIMER=1
                 PIN=webai_blockly.fpioaMapGPIO[PIN]
-                if PIN in __class__.PWMPINUSE:
-                    #print("old",__class__.PWMPINUSE.index(PIN))
-                    #print(__class__.PWMPINUSE)
-                    webai_blockly.USER_PWM_LIST[__class__.PWMPINUSE.index(PIN)].duty(VALUE)
+                if PIN in PWMPINUSE:
+                    #print("old",PWMPINUSE.index(PIN))
+                    #print(PWMPINUSE)
+                    webai_blockly.USER_PWM_LIST[PWMPINUSE.index(PIN)].duty(VALUE)
                 else:
                     #print("new")
                     TIMER=Timer(BLOCKLY_SYSTEM_TIMER,USER_PWM_LIST_COUNT%4, mode=Timer.MODE_PWM)
                     Io_PWM = PWM(TIMER,freq=PWM_FREQ, duty=VALUE, pin=PIN[0])
-                    __class__.PWMPINUSE.append(PIN)
+                    PWMPINUSE.append(PIN)
                     webai_blockly.USER_PWM_LIST.append(Io_PWM)
                 #print("USER_PWM_LIST_COUNT:"+str(USER_PWM_LIST_COUNT))
             else:
                 raise Exception("Io error")
         else:
             PIN=webai_blockly.fpioaMapGPIO[PIN]
-            if PIN in __class__.PINUSE:
+            if PIN in PINUSE:
                 #print("old")
-                __class__.PINIO[__class__.PINUSE.index(PIN)].value(VALUE)
+                PINIO[PINUSE.index(PIN)].value(VALUE)
             else:
                 #print("new")
                 fm.register(PIN[0], PIN[1],force=True)
                 IO=GPIO(PIN[2],GPIO.OUT)
                 IO.value(VALUE)
-                __class__.PINUSE.append(PIN)
-                __class__.PINIO.append(IO)
+                PINUSE.append(PIN)
+                PINIO.append(IO)
 
     # def __init__(self,PIN,MODE='input',PWMMODE=False,PWM_FREQ=50):
     #     self.PWMMODE=PWMMODE
@@ -358,8 +364,8 @@ class Io:
     #     return self.IO.value()
         
 class Servo:
-    PWMPINUSE=[]
-    ANGLELIST=[]
+    SERVOPWMPINUSE=[]
+    # ANGLELIST=[]
     def angle(PIN,PWM_FREQ=50,VALUE=0):
         USER_PWM_LIST_COUNT=len(webai_blockly.USER_PWM_LIST)
         if USER_PWM_LIST_COUNT<8:
@@ -369,24 +375,25 @@ class Servo:
                 BLOCKLY_SYSTEM_TIMER=1
             PIN=webai_blockly.fpioaMapGPIO[PIN]
             duty_cycle = (0.05 * PWM_FREQ) + (0.19 * PWM_FREQ * VALUE / 180)
-            if PIN in __class__.PWMPINUSE:
-                webai_blockly.USER_PWM_LIST[__class__.PWMPINUSE.index(PIN)].duty(duty_cycle)
-                __class__.ANGLELIST[__class__.PWMPINUSE.index(PIN)]=VALUE
+            if PIN in PWMPINUSE:
+                webai_blockly.USER_PWM_LIST[PWMPINUSE.index(PIN)].duty(duty_cycle)
+                ANGLELIST[__class__.SERVOPWMPINUSE.index(PIN)]=VALUE
                 # print("old")
             else:
                 TIMER=Timer(BLOCKLY_SYSTEM_TIMER,USER_PWM_LIST_COUNT%4, mode=Timer.MODE_PWM)
                 Io_PWM = PWM(TIMER,freq=PWM_FREQ, duty=duty_cycle, pin=PIN[0])
-                __class__.PWMPINUSE.append(PIN)
+                PWMPINUSE.append(PIN)
+                __class__.SERVOPWMPINUSE.append(PIN)
                 webai_blockly.USER_PWM_LIST.append(Io_PWM)
-                __class__.ANGLELIST.append(VALUE)
+                ANGLELIST.append(VALUE)
                 # print("new")
         else:
             raise Exception("Servo error")
     def getAngle(PIN):
         PIN=webai_blockly.fpioaMapGPIO[PIN]
-        if PIN in __class__.PWMPINUSE:
+        if PIN in PWMPINUSE:
             # print("true")
-            return __class__.ANGLELIST[__class__.PWMPINUSE.index(PIN)]
+            return ANGLELIST[__class__.SERVOPWMPINUSE.index(PIN)]
         else:
             # print("false")
             return 110
