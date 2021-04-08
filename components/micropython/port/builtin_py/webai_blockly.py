@@ -557,13 +557,14 @@ class Mic:
     rx.channel_config(rx.CHANNEL_0, rx.RECEIVER, align_mode=I2S.STANDARD_MODE)
     rx.set_sample_rate(sample_rate)
 
-    def start(self, folder="sd", fileName="recorder", record_time=5):
-        cwd = SYSTEM_DEFAULT_PATH
-        if cwd == "flash":
-            folder = "flash"
-            record_time = 1
-        else:
-            folder = "sd"
+    def start(self, folder="", fileName="recorder", record_time=5):
+        if folder=="":
+            cwd = SYSTEM_DEFAULT_PATH
+            if cwd == "flash":
+                folder = "flash"
+                record_time = 1
+            else:
+                folder = "sd"
         self.recorder = self.audio.Audio(path="/"+folder+"/"+fileName+".wav", is_create=True, samplerate=self.sample_rate)
         self.queue = []
         print("start recorder")
@@ -735,13 +736,14 @@ class Speaker:
     def setVolume(self, volume):
         self.volume = volume
 
-    def start(self, folder="sd", fileName=None, sample_rate=48000):
+    def start(self, folder="", fileName=None, sample_rate=48000):
         if(fileName != None):
-            cwd = SYSTEM_DEFAULT_PATH
-            if cwd == "flash":
-                folder = "flash"
-            else:
-                folder = "sd"
+            if folder=="":
+                cwd = SYSTEM_DEFAULT_PATH
+                if cwd == "flash":
+                    folder = "flash"
+                else:
+                    folder = "sd"
             self.wav_dev.set_sample_rate(sample_rate)
             player = self.audio.Audio(path="/"+folder+"/"+fileName+".wav")
             player.volume(self.volume)

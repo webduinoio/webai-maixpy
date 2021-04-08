@@ -420,7 +420,6 @@ __      _____| |__   __| |_   _ _ _ __   ___
   \_/\_/ \___|_.__/ \__,_|\__,_|_|_| |_|\___/ 
                                               
 Official Site : https://webduino.io
-full
 '''
 print(banner)
 del banner
@@ -433,7 +432,7 @@ import image
 from webai_blockly import Speaker
 gc.collect()
 # time.sleep(0.5)
-img = image.Image('logo.jpg')
+img = image.Image('/flash/logo.jpg')
 lcd.display(img)
 del img
 gc.collect()
@@ -441,7 +440,7 @@ time.sleep(0.5)
 
 sp = Speaker()
 sp.setVolume(20)
-sp.start(fileName='logo', sample_rate=22050)
+sp.start(folder="flash", fileName='logo', sample_rate=22050)
 del sp
 gc.collect()
 
