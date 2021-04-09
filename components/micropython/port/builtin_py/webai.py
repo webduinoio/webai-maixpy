@@ -59,14 +59,36 @@ class mcar:
 
 
 
-class Web:
+class cloud:
+    ready = False
+    container = 'default'
+    def init():
+        if(cloud.ready):
+            return
+        cloud.ready = True
+        from microWebCli import MicroWebCli
+        import machine , ubinascii , os , image
+        from webai_blockly import readUID
+        cloud.MicroWebCli = MicroWebCli
+        cloud.ubinascii = ubinascii
+        cloud.machine = machine
+        cloud.os = os
+        cloud.image = image
+        while True:
+            cloud.container = readUID()
+            if(cloud.container!=""):
+                break
 
-    def uploadFile(filename,destName):
-        url = "http://share.webduino.io/_upload/db"
-        wCli = MicroWebCli(url, 'POST')
-        fileSize = os.stat('/flash/'+filename)[6]
+    def saveImg(filename,img):
+        destName = filename
+        filename = '_tmp_.jpg'
+        img.save(filename)
+        cloud.init()
+        url = "http://share.webduino.io/_upload/"+cloud.container+"/"
+        wCli = cloud.MicroWebCli(url, 'POST')
+        fileSize = cloud.os.stat('/flash/'+filename)[6]
         print("fileSize:",fileSize)
-        boundary = "webAI"+ubinascii.hexlify(machine.unique_id()[:14]).decode('ascii')
+        boundary = "webAI"+cloud.ubinascii.hexlify(cloud.machine.unique_id()[:14]).decode('ascii')
         bodyStart = \
         '------%s\r\n'%boundary+\
         'Content-Disposition: form-data; name="file"; filename="'+destName+'"\r\n'+\
@@ -75,48 +97,59 @@ class Web:
         bodyLen = len(bodyStart) + fileSize + len(bodyEnd)
         wCli.OpenRequest(contentType='multipart/form-data; boundary=----%s' % boundary,contentLength=bodyLen)
         wCli._write(bodyStart)
-        f = open(filename,'rb')
-        readLen = 0
-        bufLen = 10240
-        while True:
-            readBlock = f.read(bufLen)
-            readBytes = len(readBlock)
-            readLen += readBytes
-            wCli._write(readBlock)
-            print('upload...',readLen,'/',fileSize)
-            if(readLen == fileSize):
-                break;
-        f.close()
+        try:
+            f = open(filename,'rb')
+            readLen = 0
+            bufLen = 10240
+            while True:
+                readBlock = f.read(bufLen)
+                readBytes = len(readBlock)
+                readLen += readBytes
+                wCli._write(readBlock)
+                print('upload...',readLen,'/',fileSize)
+                if(readLen == fileSize):
+                    break;
+        finally:
+            f.close()
+            cloud.os.remove(filename)
         wCli._write(bodyEnd)
         wCli.Close()
 
-    def downloadFile(uploadFile,saveFile):
-        url = "http://share.webduino.io/storage/download/"+uploadFile
-        wCli = MicroWebCli(url)
-        f = open(saveFile,"wb")
-        #wCli.QueryParams['pet'] = 'cat'
-        #print('GET %s' % wCli.URL)
-        wCli.OpenRequest()
-        buf  = bytearray(10240)
-        resp = wCli.GetResponse()
-        fileLen = resp.GetContentLength()
-        if resp.IsSuccess() :
-          readLen = 0
-          bufLen = len(buf)
-          while not resp.IsClosed() :
-            if(fileLen-readLen >= bufLen):
-              x = resp.ReadContentInto(buf)
+    def loadImg(uploadFile):
+        saveFile = '_tmp_.jpg'
+        cloud.init()
+        url = "http://share.webduino.io/storage/_download/"+cloud.container+"/"+uploadFile
+        wCli = cloud.MicroWebCli(url)
+        try:
+            f = open(saveFile,"wb")
+            wCli.OpenRequest()
+            buf  = bytearray(10240)
+            resp = wCli.GetResponse()
+            fileLen = resp.GetContentLength()
+            if resp.IsSuccess() :
+              readLen = 0
+              bufLen = len(buf)
+              while not resp.IsClosed() :
+                if(fileLen-readLen >= bufLen):
+                  x = resp.ReadContentInto(buf)
+                else:
+                  x = resp.ReadContentInto(buf,fileLen-readLen)
+                readLen += x
+                print("download:",readLen,'/',fileLen)
+                if x < len(buf) :
+                  buf = buf[:x]
+                  f.write(buf)
+                  break
+                f.write(buf)
             else:
-              x = resp.ReadContentInto(buf,fileLen-readLen)
-            readLen += x
-            print("download:",readLen,'/',fileLen)
-            if x < len(buf) :
-              buf = buf[:x]
-              f.write(buf)
-              break
-            f.write(buf)
-        f.close()
-        wCli.Close()
+                print("download failure")
+        finally:
+            f.close()
+            wCli.Close()
+        img = cloud.image.Image(saveFile)
+        cloud.os.remove(saveFile)
+        return img
+
 
 
 class ColorObject:
