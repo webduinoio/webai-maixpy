@@ -775,6 +775,20 @@ def uploadPic(dsname,count,url,hashKey):
             # print(fileList[i])
         print(fileList)
         data, headers, boundary = make_request(data, fileList)
+        if webai_blockly.SYSTEM_DEFAULT_PATH=="flash":
+            savePath="flash"
+        else:
+            savePath="sd"
+        import uos
+        try:
+            listFile=uos.listdir("/"+savePath)
+            for i in listFile:
+                # print(i)
+                if "picTrain" in i:    
+                    uos.remove("/"+savePath+"/"+i)
+            del listFile
+        except Exception as e:
+            print(e)
         # print(data)
         # print(headers)
         # print(url[url.find(":"):])
