@@ -21,7 +21,10 @@ def Blockly_Init():
     global SYSTEM_THREAD_START_LIST,SYSTEM_THREAD_STOP_LIST
     SYSTEM_THREAD_START_LIST=[]
     SYSTEM_THREAD_STOP_LIST=[]
-
+    global SYSTEM_IMG
+    SYSTEM_IMG=image.Image()
+    global SYSTEM_CAMERA_FLIP
+    SYSTEM_CAMERA_FLIP = 1
 
     global SYSTEM_SAVE_MSG_FLAG
     SYSTEM_SAVE_MSG_FLAG=False
@@ -425,7 +428,7 @@ class Lcd:
         self.image = image
         lcd.init()
         lcd.clear()
-        self.img = self.image.Image()
+        self.img = SYSTEM_IMG
         print('Lcd_Blockly __init__')
 
     def __del__(self):
@@ -500,7 +503,7 @@ class Camera:
             self.sensor.set_pixformat(self.sensor.RGB565)
             self.sensor.set_framesize(self.sensor.QVGA)
             self.sensor.skip_frames(time=2000)
-            self.sensor.set_vflip(flip)
+            self.setFlip(flip)
             self.sensor.set_auto_gain(auto_gain)
             self.sensor.set_auto_whitebal(auto_whitebal)
             self.sensor.set_auto_exposure(auto_exposure)
@@ -510,6 +513,10 @@ class Camera:
         except Exception as e:
             print(e)
             showMessage("init camera ERROR")
+    def setFlip(self, flip):
+        global SYSTEM_CAMERA_FLIP
+        SYSTEM_CAMERA_FLIP = flip
+        self.sensor.set_vflip(SYSTEM_CAMERA_FLIP)
 
     def shutdown(self, enable):
         self.sensor.shutdown(enable)

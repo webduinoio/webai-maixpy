@@ -1,7 +1,7 @@
 import KPU as kpu
 import machine , ubinascii , os
 from microWebCli import MicroWebCli
-
+import webai_blockly
 class mcar:
     ready = False
     def init():
@@ -217,9 +217,13 @@ class FaceDetect:
 class CodeScanner :
     def findQRCode(img):
         payload = ""
+        if webai_blockly.SYSTEM_CAMERA_FLIP == 1:
+            img.replace(img, hmirror=True)
         for code in img.find_qrcodes():
             payload = code.payload()
             break
+        if webai_blockly.SYSTEM_CAMERA_FLIP == 1:
+            img.replace(img, hmirror=True)
         return payload
 
     def findBarCode(img):

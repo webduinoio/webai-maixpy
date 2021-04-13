@@ -126,6 +126,9 @@ menu "Micropython configurations"
 		config MAIXPY_BUILTIN_PY_MICROWEBCLI
 			bool "Enable builtin py module microWebCli"
 			default y
+		config MAIXPY_BUILTIN_PY_WEBAI
+			bool "Enable builtin py module webai"
+			default y	
 		config MAIXPY_BUILTIN_PY_WEBAI_BLOCKLY
 			bool "Enable builtin py module webai_blockly"
 			default y
