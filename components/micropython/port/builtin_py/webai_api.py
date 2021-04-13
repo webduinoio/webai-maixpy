@@ -627,9 +627,9 @@ def uploadPic(dsname,count,url,hashKey):
         print(e)
         print("not setting wifi")
         onlineStatus=False
+    wlan = None
+    err = None
     if onlineStatus==True:
-        wlan = ""
-        err = ""
         wlan = network.ESP8285(webai_blockly.SYSTEM_AT_UART)
         err = 0
         while 1:
