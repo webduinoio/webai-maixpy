@@ -96,8 +96,167 @@ else:
 del webAIVersion, configFile, cfg
 
 
+
+import os,image
+import ubinascii
+from microWebCli import MicroWebCli
+
+
+class MiniHttp:
+    def readline(self):
+        # return self.raw.readline() # mpy
+        data = b""
+        while True:
+            tmp = self.raw.recv(1)
+            data += tmp
+            if tmp == b'\n':
+                break
+        return data
+
+    def write(self, data):
+        # return self.raw.write(data) # mpy
+        self.raw.send(bytes(data))
+
+    def read(self, len):
+        return self.raw.read(len) # mpy
+        # return self.raw.recv(len)
+
+    def __init__(self):
+        self.raw = None
+
+    def connect(self, url, timeout=2):
+        try:
+            proto, dummy, host, path = url.split("/", 3)
+        except ValueError:
+            proto, dummy, host = url.split("/", 2)
+            path = ""
+
+        if proto == "http:":
+            port = 80
+        elif proto == "https:":
+            port = 443
+        else:
+            raise ValueError("Unsupported protocol: " + proto)
+
+        if ":" in host:
+            host, port = host.split(":", 1)
+            port = int(port)
+
+        import socket
+        ai = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+        ai = ai[0]
+        if self.raw is not None:
+            self.raw.close()
+        raw = socket.socket(ai[0], ai[1], ai[2])
+        raw.settimeout(timeout)
+
+        raw.connect(ai[-1])
+        if proto == "https:":
+            import ussl as ssl
+            raw = ssl.wrap_socket(raw, server_hostname=host)
+        self.raw = raw
+        self.host = bytes(host, "utf-8")
+        self.path = bytes(path, "utf-8")
+
+    def exit(self):
+        if self.raw != None:
+            self.raw.close()
+            self.raw = None
+
+    def request(self, method, headers={}, data=None):
+        try:
+            self.headers = headers
+            self.write(b"%s /%s HTTP/1.1\r\n" % (method, self.path))
+            if not "Host" in headers:
+                self.write(b"Host: %s\r\n" % self.host)
+            # Iterate over keys to avoid tuple alloc
+            for k in headers:
+                self.write(k)
+                self.write(b": ")
+                self.write(headers[k])
+                self.write(b"\r\n")
+            if data:
+                self.write(b"Content-Length: %d\r\n" % len(data))
+            self.write(b"\r\n")
+            if data:
+                self.write(data)
+            l = self.readline()
+            # print(l)
+            l = l.split(None, 2)
+            status = int(l[1])
+            reason = ""
+            response = {}
+            if len(l) > 2:
+                reason = l[2].rstrip()
+            while True:
+                l = self.readline()
+                if not l or l == b"\r\n":
+                    break
+                if l.startswith(b"Transfer-Encoding:"):
+                    if b"chunked" in l:
+                        raise ValueError("Unsupported " + l)
+                # elif l.startswith(b"Location:") and not 200 <= status <= 299:
+                    # raise NotImplementedError("Redirects not yet supported")
+                try:
+                    tmp = l.split(b': ')
+                    response[tmp[0]] = tmp[1][:-2]
+                except Exception as e:
+                    print(e)
+        except OSError:
+            self.exit()
+            raise
+        return (status, reason, response)
+
+
 class cloud:
     container = 'user'
+    def downloadModel(self,url,fileName):
+        http = MiniHttp()
+        block_size = 20480
+        start = time.ticks()
+        saveFile=open('/flash/'+fileName,'w')
+        filename, file_pos, filesize, errCount = b'', 0, 0, 0
+        while True:
+            try:
+                if http.raw is None:
+                    http.connect(url)
+                    print("http connect.")
+                else:
+                    if filesize == 0:
+                        res = http.request(b"HEAD", {b'Connection': b'keep-alive'})
+                        print(res)
+                        if res[0] == 200:
+                            filesize = int(res[2][b'Content-Length'], 10)
+                    else:
+                        errCount=0
+                        file_end = file_pos + block_size
+                        if file_end > filesize:
+                            file_end = filesize
+                        headers = {
+                                b'Connection': b'keep-alive',
+                                b'Range': b'bytes=%d-%d' % (file_pos, file_end)
+                        }
+                        res = http.request(b"GET", headers)
+                        cntLength = res[2][b'Content-Length']
+                        data = http.read(int(cntLength, 10))
+                        dataLen = len(data)
+                        spendSec = int((time.ticks() - start)/1000)
+                        speed = int(file_pos/1024/spendSec*100)/100
+                        print("read data:",file_pos, filesize, speed, "KB/sec")
+                        if len(data) == (file_end - file_pos):
+                            saveFile.write(data)
+                            if file_end == filesize:
+                                print("total time:",spendSec," seconds")
+                                break
+                            else:
+                                file_pos = file_end
+            except Exception as e:
+                print(e,"errorCount:"+str(errCount))
+                errCount+=1
+                if errCount>2:
+                    raise e
+        http.exit()
+        saveFile.close()
 
     def putImg(self,img,filename):
         destName = filename
@@ -392,7 +551,6 @@ class Btn:
         if(findIdx >=0):
             del self.eventHandler[findIdx]
 
-
 class mqtt:
 
     def sub(topic,callback,includeID = False):
@@ -422,7 +580,7 @@ class webai:
         print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
 
     def connect(ssid,pwd):
-        esp8285.init(115200*10)
+        esp8285.init(115200*20)
         webai.cloud.container = esp8285.deviceID
         if(esp8285.wifiConnect == False):
             esp8285.connect(ssid,pwd)
@@ -451,5 +609,4 @@ class webai:
     def show(cloudImg):
         img = webai.cloud.getImg(cloudImg)
         webai.lcd.display(img)
-
 
