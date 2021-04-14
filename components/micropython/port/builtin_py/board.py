@@ -564,6 +564,7 @@ import lcd,sensor,time
 class webai:
 
     def init():
+        from Maix import utils
         lcd.init()
         webai.init_camera_ok = False
         a = time.ticks()
@@ -577,7 +578,47 @@ class webai:
         webai.cloud = cloud()
         webai.lcd = lcd
         webai.camera = sensor
+        webai.kboot_fw_flag = 0x1ffff
+        webai.fwType = None
+        if(utils.heap_free()/1024 > 4000):
+            webai.fwType = 'min'
+        else:
+            webai.fwType = 'std'
+        webai.setFW(webai.nowFW())            
         print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
+
+    def nowFW():
+        return webai.fwType
+
+    def getFW():
+        fwType = utils.flash_read(webai.kboot_fw_flag,1)[0]
+        return "min" if fwType==0 else "std"
+
+    def info():
+        from Maix import utils
+        import KPU as kpu
+        print("heap size:",int(utils.gc_heap_size()/1024),"KB")
+        print("mem_free:",int(gc.mem_free()/1024),"KB")
+        print("memtest:",kpu.memtest())
+
+    def heap(n):
+        utils.gc_heap_size(n*1024)
+        import machine
+        machine.reset()
+
+    def setFW(name='min'):
+        import machine
+        from Maix import utils
+        if name == 'min' or name == 'mini':
+            utils.flash_write(webai.kboot_fw_flag,bytearray([0]))
+            if webai.nowFW() != name:
+                machine.reset()
+        elif name == 'std':
+            utils.flash_write(webai.kboot_fw_flag,bytearray([1]))
+            if webai.nowFW() != name:
+                machine.reset()
+        else:
+            raise Exception("wrong fw select !!!")
 
     def connect(ssid,pwd):
         esp8285.init(115200*20)
@@ -603,10 +644,29 @@ class webai:
     def addBtnListener(evt):
         webai.btnHandler.append(evt)
 
-    def take():
+    def snapshot():
         return sensor.snapshot()
 
     def show(cloudImg):
         img = webai.cloud.getImg(cloudImg)
         webai.lcd.display(img)
 
+
+    def ls():
+        import os
+        a = os.listdir()
+        for file in a:
+            print(file)
+
+    def cat(file):
+        import os
+        lines = ''
+        with open(file,"r") as f:
+            lines = f.readlines()
+        for line in lines:
+            print(line.replace('\n',''))
+        print()
+
+    def rm(file):
+        import os
+        os.remove(file)
