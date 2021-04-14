@@ -565,9 +565,16 @@ class webai:
 
     def init():
         from Maix import utils
+        a = time.ticks()
+        webai.kboot_fw_flag = 0x1ffff
+        webai.fwType = None
+        if(utils.heap_free()/1024 > 3000):
+            webai.fwType = 'min'
+        else:
+            webai.fwType = 'std'
+        webai.setFW(webai.nowFW())            
         lcd.init()
         webai.init_camera_ok = False
-        a = time.ticks()
         webai.initSensor()
         webai.btnHandler = []
         webai.btnL = Btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
@@ -578,19 +585,13 @@ class webai:
         webai.cloud = cloud()
         webai.lcd = lcd
         webai.camera = sensor
-        webai.kboot_fw_flag = 0x1ffff
-        webai.fwType = None
-        if(utils.heap_free()/1024 > 4000):
-            webai.fwType = 'min'
-        else:
-            webai.fwType = 'std'
-        webai.setFW(webai.nowFW())            
         print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
 
     def nowFW():
         return webai.fwType
 
     def getFW():
+        from Maix import utils
         fwType = utils.flash_read(webai.kboot_fw_flag,1)[0]
         return "min" if fwType==0 else "std"
 
@@ -602,23 +603,30 @@ class webai:
         print("memtest:",kpu.memtest())
 
     def heap(n):
+        from Maix import utils
         utils.gc_heap_size(n*1024)
         import machine
         machine.reset()
 
     def setFW(name='min'):
-        import machine
+        import machine,time
         from Maix import utils
         if name == 'min' or name == 'mini':
             utils.flash_write(webai.kboot_fw_flag,bytearray([0]))
             if webai.nowFW() != name:
+                time.sleep(1)
                 machine.reset()
         elif name == 'std':
             utils.flash_write(webai.kboot_fw_flag,bytearray([1]))
             if webai.nowFW() != name:
+                time.sleep(1)
                 machine.reset()
         else:
             raise Exception("wrong fw select !!!")
+
+    def reset():
+        import machine
+        machine.reset()
 
     def connect(ssid,pwd):
         esp8285.init(115200*20)
