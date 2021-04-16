@@ -563,19 +563,20 @@ import lcd,sensor,time
 
 class webai:
 
-    def init():
+    def init(camera=True):
         from Maix import utils
         a = time.ticks()
         webai.kboot_fw_flag = 0x1ffff
         webai.fwType = None
-        if(utils.heap_free()/1024 > 3000):
+        if(utils.heap_free()/1024 > 2000):
             webai.fwType = 'min'
         else:
             webai.fwType = 'std'
-        webai.setFW(webai.nowFW())            
+        webai.setFW(webai.nowFW())
         lcd.init()
         webai.init_camera_ok = False
-        webai.initSensor()
+        if camera:
+            webai.initSensor()
         webai.btnHandler = []
         webai.btnL = Btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
         webai.btnR = Btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
@@ -586,6 +587,7 @@ class webai:
         webai.lcd = lcd
         webai.camera = sensor
         print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
+        webai.info()
 
     def nowFW():
         return webai.fwType
@@ -593,11 +595,12 @@ class webai:
     def getFW():
         from Maix import utils
         fwType = utils.flash_read(webai.kboot_fw_flag,1)[0]
-        return "min" if fwType==0 else "std"
+        return "min" if fwType==1 else "std"
 
     def info():
         from Maix import utils
         import KPU as kpu
+        print("[ FirmwareType:",webai.fwType," ]")
         print("heap size:",int(utils.gc_heap_size()/1024),"KB")
         print("mem_free:",int(gc.mem_free()/1024),"KB")
         print("memtest:",kpu.memtest())
@@ -612,12 +615,12 @@ class webai:
         import machine,time
         from Maix import utils
         if name == 'min' or name == 'mini':
-            utils.flash_write(webai.kboot_fw_flag,bytearray([0]))
+            utils.flash_write(webai.kboot_fw_flag,bytearray([1]))
             if webai.nowFW() != name:
                 time.sleep(1)
                 machine.reset()
         elif name == 'std':
-            utils.flash_write(webai.kboot_fw_flag,bytearray([1]))
+            utils.flash_write(webai.kboot_fw_flag,bytearray([0]))
             if webai.nowFW() != name:
                 time.sleep(1)
                 machine.reset()
@@ -628,12 +631,11 @@ class webai:
         import machine
         machine.reset()
 
-    def connect(ssid,pwd):
+    def connect(ssid="webduino.io",pwd="webduino"):
         esp8285.init(115200*20)
         webai.cloud.container = esp8285.deviceID
         if(esp8285.wifiConnect == False):
             esp8285.connect(ssid,pwd)
-
 
     def initSensor():
         sensor.reset()
@@ -655,10 +657,15 @@ class webai:
     def snapshot():
         return sensor.snapshot()
 
-    def show(cloudImg):
-        img = webai.cloud.getImg(cloudImg)
-        webai.lcd.display(img)
-
+    def show(url="",file="",img=None):
+        if img != None:
+            webai.lcd.display(img)
+        else:
+            if len(url)>0:
+                img = webai.cloud.getImg(url)
+            if len(file)>0:
+                img = image.Image(file)
+            webai.lcd.display(img)
 
     def ls():
         import os
@@ -677,4 +684,9 @@ class webai:
 
     def rm(file):
         import os
-        os.remove(file)
+        if(file=="*"):
+            a = os.listdir()
+            for filename in a:
+                os.remove(filename)
+        else:
+            os.remove(file)
