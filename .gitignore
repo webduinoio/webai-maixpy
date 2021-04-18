@@ -1,3 +1,6 @@
+# mac notebook
+*.DS_Store
+
 # Prerequisites
 *.d
 
