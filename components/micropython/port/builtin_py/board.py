@@ -696,6 +696,8 @@ class fw:
         elif name == 'std':
             utils.flash_write(fw.kboot_fw_flag,bytearray([0]))
             if fw.now() != name:
+                time.sleep(1)
+                machine.reset()
 
     def setFW(name='min'):
         import machine,time
@@ -874,3 +876,4 @@ class webai:
                 os.remove(filename)
         else:
             os.remove(file)
+
