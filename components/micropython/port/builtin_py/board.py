@@ -604,6 +604,34 @@ class fs:
         for file in a:
             print(file)
 
+class webai:
+
+    def init(camera=True):
+        from Maix import utils
+        a = time.ticks()
+        webai.kboot_fw_flag = 0x1ffff
+        webai.fwType = None
+        if(utils.heap_free()/1024 > 2000):
+            webai.fwType = 'min'
+        else:
+            webai.fwType = 'std'
+        webai.setFW(webai.nowFW())
+        lcd.init()
+        webai.init_camera_ok = False
+        if camera:
+            webai.initSensor()
+        webai.btnHandler = []
+        webai.btnL = Btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
+        webai.btnR = Btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
+        webai.btnL.addBtnEventListener(webai.onBtn)
+        webai.btnR.addBtnEventListener(webai.onBtn)
+        webai.mqtt = mqtt
+        webai.cloud = cloud()
+        webai.lcd = lcd
+        webai.camera = sensor
+        print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
+        webai.info()
+
     def cat(file):
         import os
         lines = ''
@@ -621,6 +649,11 @@ class fs:
                 os.remove(filename)
         else:
             os.remove(file)
+
+    def getFW():
+        from Maix import utils
+        fwType = utils.flash_read(webai.kboot_fw_flag,1)[0]
+        return "min" if fwType==1 else "std"
 
 class mem:
     def info():
@@ -663,6 +696,18 @@ class fw:
         elif name == 'std':
             utils.flash_write(fw.kboot_fw_flag,bytearray([0]))
             if fw.now() != name:
+
+    def setFW(name='min'):
+        import machine,time
+        from Maix import utils
+        if name == 'min' or name == 'mini':
+            utils.flash_write(webai.kboot_fw_flag,bytearray([1]))
+            if webai.nowFW() != name:
+                time.sleep(1)
+                machine.reset()
+        elif name == 'std':
+            utils.flash_write(webai.kboot_fw_flag,bytearray([0]))
+            if webai.nowFW() != name:
                 time.sleep(1)
                 machine.reset()
         else:
@@ -771,6 +816,7 @@ class webai:
         esp8285.init(115200*webai.speed)
 
     def connect(ssid="webduino.io",pwd="webduino"):
+        esp8285.init(115200*20)
         webai.cloud.container = esp8285.deviceID
         if(esp8285.wifiConnect == False):
             esp8285.connect(ssid,pwd)
@@ -804,3 +850,27 @@ class webai:
             if len(file)>0:
                 img = image.Image(file)
             webai.lcd.display(img)
+
+    def ls():
+        import os
+        a = os.listdir()
+        for file in a:
+            print(file)
+
+    def cat(file):
+        import os
+        lines = ''
+        with open(file,"r") as f:
+            lines = f.readlines()
+        for line in lines:
+            print(line.replace('\n',''))
+        print()
+
+    def rm(file):
+        import os
+        if(file=="*"):
+            a = os.listdir()
+            for filename in a:
+                os.remove(filename)
+        else:
+            os.remove(file)
