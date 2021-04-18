@@ -11,266 +11,18 @@ import _thread
 import time,lcd,image,sensor
 import ustruct
 from machine import I2C
-
-def Blockly_Init():
-    global USER_PWM_LIST
-    USER_PWM_LIST = []
-    global SYSTEM_K210_VERSION, SYSTEM_BTN_L, SYSTEM_BTN_R, SYSTEM_AT_UART, SYSTEM_ESP_VERSION, SYSTEM_ESP_DEVICE_ID, SYSTEM_DEFAULT_PATH, SYSTEM_MQTT_CALLBACK_FLAG, SYSTEM_THREAD_MQTT_FLAG, SYSTEM_THREAD_MQTT_MSG, SYSTEM_MQTT_TOPIC, SYSTEM_LOG_UART
-    global SYSTEM_WLAN, SYSTEM_WiFiInfo,SYSTEM_WiFiCheckCount
-    global fpioaMapGPIO
-    global SYSTEM_THREAD_START_LIST,SYSTEM_THREAD_STOP_LIST
-    SYSTEM_THREAD_START_LIST=[]
-    SYSTEM_THREAD_STOP_LIST=[]
-    global SYSTEM_IMG
-    SYSTEM_IMG=image.Image()
-    global SYSTEM_CAMERA_FLIP
-    SYSTEM_CAMERA_FLIP = 1
-
-    global SYSTEM_SAVE_MSG_FLAG
-    SYSTEM_SAVE_MSG_FLAG=False
-    # SYSTEM_TEST_MSG=""
-    global SYSTEM_ALLOCATE_LOCK
-    SYSTEM_ALLOCATE_LOCK = _thread.allocate_lock()
-    global SYSTEM_MQTT_CONNECT
-    SYSTEM_MQTT_CONNECT=True
-
-    fpioaMapGPIO={
-'0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
-'1':[board_info.P1,fm.fpioa.GPIOHS1,GPIO.GPIOHS1],
-'2':[board_info.P2,fm.fpioa.GPIOHS2,GPIO.GPIOHS2],
-'3':[board_info.P3,fm.fpioa.GPIOHS3,GPIO.GPIOHS3],
-'5':[board_info.P5,fm.fpioa.GPIOHS5,GPIO.GPIOHS5],
-'6':[board_info.P6,fm.fpioa.GPIOHS6,GPIO.GPIOHS6],
-'7':[board_info.P7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7],
-'8':[board_info.P8,fm.fpioa.GPIOHS8,GPIO.GPIOHS8],
-'9':[board_info.P9,fm.fpioa.GPIOHS9,GPIO.GPIOHS9],
-'10':[board_info.P10,fm.fpioa.GPIOHS10,GPIO.GPIOHS10],
-'11':[board_info.P11,fm.fpioa.GPIOHS11,GPIO.GPIOHS11],
-'12':[board_info.P12,fm.fpioa.GPIOHS12,GPIO.GPIOHS12],
-'13':[board_info.P13,fm.fpioa.GPIOHS13,GPIO.GPIOHS13],
-'14':[board_info.P14,fm.fpioa.GPIOHS14,GPIO.GPIOHS14],
-'15':[board_info.P15,fm.fpioa.GPIOHS15,GPIO.GPIOHS15],
-'16':[board_info.P16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16],
-'19':[board_info.P19,fm.fpioa.GPIO0,GPIO.GPIO0],
-'20':[board_info.P20,fm.fpioa.GPIO1,GPIO.GPIO1]}
-    SYSTEM_WLAN = None
-    SYSTEM_WiFiInfo = None
-    SYSTEM_WiFiCheckCount = 7
-    SYSTEM_K210_VERSION = os.uname()
-    pinA = 7  # A
-    fm.fpioa.set_function(pinA, fm.fpioa.GPIO7)
-    SYSTEM_BTN_L = GPIO(GPIO.GPIO7, GPIO.IN)
-    pinB = 16  # B
-    fm.fpioa.set_function(pinB, fm.fpioa.GPIO6)
-    SYSTEM_BTN_R = GPIO(GPIO.GPIO6, GPIO.IN)
-    del pinA, pinB
-    fm.register(27, fm.fpioa.UART2_TX, force=True)
-    fm.register(28, fm.fpioa.UART2_RX, force=True)
-    SYSTEM_AT_UART = UART(UART.UART2, 115200, timeout=5000, read_buf_len=40960)
-    startTime = time.ticks_ms()
-    endTime = 0
-    while SYSTEM_AT_UART.any():
-        endTime = time.ticks_ms()
-        if((endTime-startTime) >= 500):
-            break
-        print(SYSTEM_AT_UART.readline())
-    SYSTEM_AT_UART.write('AT+GMR' + '\r\n')
-    SYSTEM_ESP_VERSION = ""
-    SYSTEM_ESP_DEVICE_ID = ""
-    myLine = ''
-    ifdata = True
-    while not "OK" in myLine:
-        while not SYSTEM_AT_UART.any():
-            endTime = time.ticks_ms()
-            # print(end-start)
-            if((endTime-startTime) >= 2000):
-                ifdata = False
-                break
-        if(ifdata):
-            myLine = SYSTEM_AT_UART.readline()
-            print(myLine)
-            if "Bin version" in myLine:
-                SYSTEM_ESP_VERSION = myLine
-                SYSTEM_ESP_VERSION = SYSTEM_ESP_VERSION.decode()
-                SYSTEM_ESP_VERSION = SYSTEM_ESP_VERSION[SYSTEM_ESP_VERSION.find(':')+1:]
-                SYSTEM_ESP_VERSION = SYSTEM_ESP_VERSION.rstrip()
-                # break
-            if "deviceID" in myLine:
-                SYSTEM_ESP_DEVICE_ID = myLine
-                SYSTEM_ESP_DEVICE_ID = SYSTEM_ESP_DEVICE_ID.decode()
-                SYSTEM_ESP_DEVICE_ID = SYSTEM_ESP_DEVICE_ID[SYSTEM_ESP_DEVICE_ID.find(':')+1:]
-                SYSTEM_ESP_DEVICE_ID = SYSTEM_ESP_DEVICE_ID.rstrip()
-                break
-        else:
-            print("timeout")
-            break
-    print("K210_VERSION:"+SYSTEM_K210_VERSION[5])
-    print("ESP_VERSION:"+SYSTEM_ESP_VERSION)
-    print("ESP_DEVICE_ID:"+SYSTEM_ESP_DEVICE_ID)
-
-    # SYSTEM_AT_UART.deinit()
-    # SYSTEM_AT_UART=None
-    # fm.unregister(27)
-    # fm.unregister(28)
-    # del SYSTEM_AT_UART
-
-    del myLine, startTime, ifdata, endTime
-
-    SYSTEM_DEFAULT_PATH = os.getcwd()
-    if "flash" in SYSTEM_DEFAULT_PATH:
-        print("cwd:flash")
-        SYSTEM_DEFAULT_PATH = "flash"
-    else:
-        print("cwd:sd")
-        SYSTEM_DEFAULT_PATH = "sd"
-    gc.collect()
-    # from board import board_info
-
-    # def MQTT_CALLBACK(uartObj):
-    #     if SYSTEM_MQTT_CALLBACK_FLAG==True:
-    #         SYSTEM_LOG_UART.stop()
-    #         # from webai_api import downloadModel,takeMobileNetPic
-    #         SUBSCRIBE_MSG = None
-    #         global SYSTEM_WiFiCheckCount,SYSTEM_MQTT_TOPIC
-    #         try:
-    #             while SYSTEM_LOG_UART.any():
-    #                 myLine = SYSTEM_LOG_UART.readline()
-    #                 # print(myLine)
-    #                 SUBSCRIBE_MSG = myLine.decode().strip()
-    #                 if "mqtt" in SUBSCRIBE_MSG[0:4]:
-    #                     SUBSCRIBE_MSG = SUBSCRIBE_MSG.split(',', 2)
-    #             if SUBSCRIBE_MSG != None and len(SUBSCRIBE_MSG) == 3:
-    #                 if SUBSCRIBE_MSG[1] == SYSTEM_ESP_DEVICE_ID+"/PING":
-    #                     resetFlag=True
-    #                     if SUBSCRIBE_MSG[2].find("_DEPLOY/") == 0:
-    #                         pass
-    #                         # Mqtt.push("6e559b/PONG","OK")
-                            
-    #                         # print("DOWNLOAD")
-    #                         # downloadModel('mqtt.main.py', 'yolo', SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:], True)
-    #                         # print("reset")
-    #                         #time.sleep(1)
-    #                     elif SUBSCRIBE_MSG[2].find("_RESET") == 0:
-    #                         # Mqtt.push("6e559b/PONG","OK")
-    #                         Mqtt.pushID("PONG", "OK")
-    #                         print("reset")
-    #                         import machine
-    #                         machine.reset()
-    #                     elif SUBSCRIBE_MSG[2].find("_TAKEPIC_YOLO/") == 0:
-    #                         # Mqtt.push("6e559b/PONG","OK")
-    #                         Mqtt.pushID("PONG", "OK")
-    #                         print("_TAKEPIC_YOLO")
-    #                         resetFlag=False
-    #                     elif SUBSCRIBE_MSG[2].find("_TAKEPIC_MOBILENET/") == 0:
-    #                         pass
-    #                         # Mqtt.push("6e559b/PONG","OK")
-    #                         # Mqtt.pushID("PONG", "OK")
-    #                         # mqttJsonData = ujson.loads(
-    #                         #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-    #                         # takeMobileNetPic(mqttJsonData['dsname'], mqttJsonData['count'], 1, mqttJsonData['url'], mqttJsonData['hashKey'])
-    #                         # with open('/flash/cmd.txt','w') as f:
-    #                         #     f.write(SUBSCRIBE_MSG[2])
-    #                         # os.sync()
-    #                         # import machine
-    #                         # machine.reset()
-    #                     elif SUBSCRIBE_MSG[2].find("_DOWNLOAD_MODEL/") == 0:
-    #                         pass
-    #                         # Mqtt.push("6e559b/PONG","OK")
-    #                         # Mqtt.pushID("PONG", "OK")
-    #                         # mqttJsonData = ujson.loads(
-    #                         #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-    #                         # downloadModel(mqttJsonData['fileName'], mqttJsonData['modelType'], mqttJsonData['url'])
-                            
-    #                     elif SUBSCRIBE_MSG[2].find("_DOWNLOAD_FILE/") == 0:
-    #                         pass
-    #                         # Mqtt.push("6e559b/PONG","OK")
-    #                         # Mqtt.pushID("PONG", "OK")
-    #                         # mqttJsonData = ujson.loads(
-    #                         #     SUBSCRIBE_MSG[2][SUBSCRIBE_MSG[2].find("/")+1:])
-    #                         # downloadModel(mqttJsonData['fileName'], 'yolo', mqttJsonData['url'], True)
-    #                         # print("reset")
-    #                         #time.sleep(1)
-    #                         # import machine
-    #                         # os.sync()
-    #                         # machine.reset()
-    #                     else:
-    #                         resetFlag=False
-    #                         print("error command")
-    #                     if resetFlag:
-    #                         Mqtt.pushID("PONG", "OK")
-    #                         print("write cmd.txt")
-    #                         with open('/flash/cmd.txt','w') as f:
-    #                             f.write(SUBSCRIBE_MSG[2])
-    #                         os.sync()
-    #                         print("reset")
-    #                         import machine
-    #                         machine.reset()
-    #                     SYSTEM_WiFiCheckCount = -1
-    #                     print("blockly:",SYSTEM_WiFiCheckCount)
-    #                 elif SYSTEM_THREAD_MQTT_FLAG == True:
-    #                     if SYSTEM_MQTT_TOPIC.get(SUBSCRIBE_MSG[1]) != None:
-    #                         print("user topic:",SUBSCRIBE_MSG[2])
-    #                         SYSTEM_MQTT_TOPIC[SUBSCRIBE_MSG[1]] = SUBSCRIBE_MSG[2]
-    #                     else:
-    #                         print("error topic")
-    #         except Exception as e:
-    #             print(e)
-    #             print("MQTT_CALLBACK read error")
-    #         SYSTEM_LOG_UART.start()
-
-    #         while SYSTEM_LOG_UART.any():
-    #             SYSTEM_LOG_UART.readline()
-    # from webai_api import function
-    SYSTEM_MQTT_CALLBACK_FLAG = True
-    SYSTEM_THREAD_MQTT_FLAG = False
-    SYSTEM_THREAD_MQTT_MSG = {}
-    SYSTEM_MQTT_TOPIC = {}
-    fm.register(18, fm.fpioa.UART3_RX, force=True)
-    SYSTEM_LOG_UART = UART(UART.UART3, 115200, timeout=5000,read_buf_len=10240, callback=MQTT_CALLBACK)
-    try:
-        print("init SYSTEM_LOG_UART")
-        while SYSTEM_LOG_UART.any():
-            SYSTEM_LOG_UART.readline()
-        print("init SYSTEM_LOG_UART end")
-    except Exception as e:
-        print(e)
-        print("SYSTEM_LOG_UART error")
-
+from board import webai
 
 def saveMsg(timer):
-# def saveMsg(cmd):
     global SYSTEM_THREAD_START_LIST
     while 1:
         if SYSTEM_SAVE_MSG_FLAG:
-            # print("stop thread")
-
-            # for i in range(0,len(SYSTEM_THREAD_START_LIST)):
-            #     SYSTEM_THREAD_START_LIST[i]=0
-            # bak = time.ticks()
-            # print("check stop thread list",SYSTEM_THREAD_START_LIST)
-            # while 1:
-            #     if 1 in SYSTEM_THREAD_STOP_LIST:
-            #         # print(SYSTEM_THREAD_STOP_LIST)
-            #         print("wait stop",SYSTEM_THREAD_STOP_LIST)
-            #         time.sleep(0.25)
-            #     else:
-            #         print("stop all thread")
-            #         break
-            # print('total time ', time.ticks() - bak)
-
-            # print("sleep 2")
-            # time.sleep(2)
             print("lock thread")
             while not SYSTEM_ALLOCATE_LOCK.acquire():
                 time.sleep(0.05)
             print("sleep 1")
             time.sleep(1)
             print("write1 cmd.txt")
-            # with open('/flash/cmd.txt','w') as f:
-            #     print("write2 cmd.txt")
-            #     f.write(webai_blockly.SYSTEM_TEST_MSG)
-            #     print("write3 cmd.txt")
-            # print("write4 cmd.txt")
             f=open('/flash/cmd.txt','w')
             print("write2 cmd.txt")
             f.write(timer.callback_arg())
@@ -428,7 +180,7 @@ class Lcd:
         self.image = image
         lcd.init()
         lcd.clear()
-        self.img = SYSTEM_IMG
+        #webai.img = webai.img
         print('Lcd_Blockly __init__')
 
     def __del__(self):
@@ -437,7 +189,7 @@ class Lcd:
 
     def clear(self):
         lcd.clear()
-        self.img.clear()
+        #webai.img.clear()
 
     def draw_string(self, x, y, msg, strColor, bgColor):
         if not msg == '':
@@ -450,8 +202,8 @@ class Lcd:
                 self.path = "/flash/"+img+'.jpg'
             else:
                 self.path = "/sd/"+img+'.jpg'
-            self.img = self.image.Image(self.path)
-            lcd.display(self.img)
+            webai.img = self.image.Image(self.path)
+            lcd.display(webai.img)
         else:
             lcd.display(img)
 
@@ -468,30 +220,30 @@ class Lcd:
         return lcd.height()
 
     def drawCircle(self, x, y, radius, color=0xffffff, thickness=1, fill=False):
-        self.img.draw_circle(x, y, radius, color, thickness, fill)
-        lcd.display(self.img)
+        webai.img.draw_circle(x, y, radius, color, thickness, fill)
+        lcd.display(webai.img)
 
     def drawLine(self, x0, y0, x1, y1, color=0xffffff, thickness=1):
-        self.img.draw_line(x0, y0, x1, y1, color, thickness)
-        lcd.display(self.img)
+        webai.img.draw_line(x0, y0, x1, y1, color, thickness)
+        lcd.display(webai.img)
 
     def drawRectangle(self, x, y, w, h, color=0xffffff, thickness=1, fill=False):
-        self.img.draw_rectangle(x, y, w, h, color, thickness, fill)
-        lcd.display(self.img)
+        webai.img.draw_rectangle(x, y, w, h, color, thickness, fill)
+        lcd.display(webai.img)
 
     def drawArrow(self, x0, y0, x1, y1, color=0xffffff, thickness=1):
-        self.img.draw_arrow(x0, y0, x1, y1, color, thickness)
-        lcd.display(self.img)
+        webai.img.draw_arrow(x0, y0, x1, y1, color, thickness)
+        lcd.display(webai.img)
 
     def drawCross(self, x, y, color=0xffffff, size=5, thickness=1):
-        self.img.draw_cross(x, y, color, size, thickness)
-        lcd.display(self.img)
+        webai.img.draw_cross(x, y, color, size, thickness)
+        lcd.display(webai.img)
 
     def drawString(self, x, y, text, color=(255,255,255), scale=2, x_spacing=20, mono_space=False):
         self.image.font_load(self.image.UTF8, 16, 16, 0x980000)
-        self.img.draw_string(x, y, text, scale=scale, color=color, x_spacing=x_spacing, mono_space=mono_space)
+        webai.img.draw_string(x, y, text, scale=scale, color=color, x_spacing=x_spacing, mono_space=mono_space)
         self.image.font_free()
-        lcd.display(self.img)
+        lcd.display(webai.img)
             
 class Camera:
     import sensor
@@ -708,77 +460,6 @@ class Servo:
         else:
             # print("false")
             return 110
-
-
-
-
-
- #   _____                          _                  
- #  / ____|                        | |                 
- # | (___    _ __     ___    __ _  | | __   ___   _ __ 
- #  \___ \  | '_ \   / _ \  / _` | | |/ /  / _ \ | '__|
- #  ____) | | |_) | |  __/ | (_| | |   <  |  __/ | |   
- # |_____/  | .__/   \___|  \__,_| |_|\_\  \___| |_|   
- #          | |                                        
- #          |_|                                        
-
-class Speaker:
-    def __init__(self):
-        from Maix import I2S
-        from fpioa_manager import fm
-        import audio
-        fm.register(board_info.SPK_I2S_OUT, fm.fpioa.I2S2_OUT_D1, force=True)
-        fm.register(board_info.SPK_I2S_WS, fm.fpioa.I2S2_WS, force=True)
-        fm.register(board_info.SPK_I2S_SCLK, fm.fpioa.I2S2_SCLK, force=True)
-        self.wav_dev = I2S(I2S.DEVICE_2)
-        self.wav_dev.channel_config(self.wav_dev.CHANNEL_1, I2S.TRANSMITTER, resolution=I2S.RESOLUTION_16_BIT,cycles=I2S.SCLK_CYCLES_32, align_mode=I2S.RIGHT_JUSTIFYING_MODE)
-        self.audio = audio
-        self.volume = 5
-        print("SPEAKER __init__")
-
-    def __del__(self):
-        del self
-        print("SPEAKER __del__")
-
-    def setVolume(self, volume):
-        self.volume = volume
-
-    def start(self, folder="", fileName=None, sample_rate=48000):
-        if(fileName != None):
-            if folder=="":
-                cwd = SYSTEM_DEFAULT_PATH
-                if cwd == "flash":
-                    folder = "flash"
-                else:
-                    folder = "sd"
-            self.wav_dev.set_sample_rate(sample_rate)
-            player = self.audio.Audio(path="/"+folder+"/"+fileName+".wav")
-            player.volume(self.volume)
-            # read audio info
-            #wav_info = player.play_process(wav_dev)
-            #print("wav file head information: ", wav_info)
-            player.play_process(self.wav_dev)
-            print("start play")
-            #commCycle("AT+SPEAKER=1")
-            commCycle("AT+SPEAKER=1")
-
-            while True:
-               ret = player.play()
-               if ret == None:
-                   print("format error")
-                   break
-               elif ret == 0:
-                   print("end")
-                   break
-
-            #commCycle("AT+SPEAKER=0")
-            player.finish()
-            commCycle("AT+SPEAKER=0")
-            #print(time.time())
-            print("play finish")
-        else:
-            print("fileName error")
-
 
 
  #  _______    _____    _____   ____    _  _     ______   ___    _____ 

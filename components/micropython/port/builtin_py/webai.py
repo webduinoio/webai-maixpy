@@ -217,18 +217,39 @@ class FaceDetect:
 class CodeScanner :
     def findQRCode(img):
         payload = ""
-        if webai_blockly.SYSTEM_CAMERA_FLIP == 1:
-            img.replace(img, hmirror=True)
+        find = False
         for code in img.find_qrcodes():
             payload = code.payload()
+            find = True
             break
-        if webai_blockly.SYSTEM_CAMERA_FLIP == 1:
+        if not find:
+            img.replace(img, hmirror=True)
+            for code in img.find_qrcodes():
+                payload = code.payload()
+                find = True
+                break
             img.replace(img, hmirror=True)
         return payload
 
     def findBarCode(img):
         payload = ""
+        find = False
         for code in img.find_barcodes():
             payload = code.payload()
+            find = True
             break
+        if not find:
+            img.replace(img, hmirror=True)
+            for code in img.find_barcodes():
+                payload = code.payload()
+                find = True
+                break
+            img.replace(img, hmirror=True)
+        if not find:
+            img.replace(img, vmirror=True)
+            for code in img.find_barcodes():
+                payload = code.payload()
+                find = True
+                break
+            img.replace(img, vmirror=True)
         return payload

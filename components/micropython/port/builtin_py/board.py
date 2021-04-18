@@ -207,7 +207,6 @@ class MiniHttp:
             raise
         return (status, reason, response)
 
-
 class cloud:
     container = 'user'
     def downloadModel(self,url,fileName):
@@ -258,12 +257,28 @@ class cloud:
         http.exit()
         saveFile.close()
 
-    def putImg(self,img,filename):
+    def putImg(self,img,filename,retry=3):
+        while True:
+            try:
+                self._putImg(img,filename,retry)
+                break
+            except:
+                retry = retry - 1
+                if(retry==0):
+                    break
+                print("retry...",retry)
+                webai.resetESP8285()
+
+    def _putImg(self,img,filename,retry):
         destName = filename
         filename = '_tmp_.jpg'
+        print("save...",filename)
         img.save(filename)
+        print("save done.")
         url = "http://share.webduino.io/_upload/"+self.container+"/"
+        print("open post...")
         wCli = MicroWebCli(url, 'POST')
+        print("open post...done")
         fileSize = os.stat('/flash/'+filename)[6]
         print("fileSize:",fileSize)
         boundary = "webAI"+ubinascii.hexlify(machine.unique_id()[:14]).decode('ascii')
@@ -288,11 +303,12 @@ class cloud:
                 if(readLen == fileSize):
                     break;
         finally:
+
             f.close()
             os.remove(filename)
-        print("upload completed.")
         wCli._write(bodyEnd)
         wCli.Close()
+        print("upload completed.")
 
     def getImg(self,uploadFile):
         saveFile = '_tmp_.jpg'
@@ -363,6 +379,7 @@ class esp8285:
         while esp8285.uart_cb.any():
             esp8285.uart_cb.readline()
         esp8285.getInfo()
+        gc.collect()
         print("esp8285 init OK [ ",esp8285.deviceID," ]")
 
     #'mqttConnect' : mqtt 連線
@@ -509,14 +526,39 @@ class Btn:
         Btn.UP = 0
         Btn.DOWN = 1
         Btn.LONG_PRESS = 2
+        if not hasattr(Btn,'btnStateQueue'):
+            Btn.btnStateQueue = {}
         fm.fpioa.set_function(pin, fpioaGPIO)
         self.idx = 0
         self.name = name
-        self.pin = pin
+        self.pin = 'Pin('+str(pin)+')'
+        Btn.btnStateQueue[self.pin] = []
         self.eventHandler = []
         self.btn = GPIO(gpio, GPIO.IN)
-        self.btn.irq(self.process,GPIO.IRQ_BOTH)
+        self.btn.irq(Btn.process,GPIO.IRQ_BOTH)
         self.btnState = Btn.DOWN if(self.btn.value()==0) else Btn.UP
+        self.irq_process = False
+        self.lastProcessTime = time.ticks_ms()
+        _thread.start_new_thread(self.run,())
+
+    def process(pinInfo):
+        Btn.btnStateQueue[str(pinInfo)].append(pinInfo)
+
+    def run(self):
+        while True:
+            stateList = Btn.btnStateQueue[self.pin]
+            if len(stateList) > 0:
+                nowTime = time.ticks_ms()
+                if (nowTime - self.lastProcessTime) > 10:
+                    self.lastProcessTime = nowTime
+                    val = stateList[0].value()
+                    for evt in self.eventHandler:
+                        if(val==0):
+                            evt(self.name,1)
+                        else:
+                            evt(self.name,0)
+                del stateList[0]
+            time.sleep(0.001)
 
     def state(self):
         self.btnState = Btn.DOWN if(self.btn.value()==0) else Btn.UP
@@ -531,13 +573,6 @@ class Btn:
             for evt in self.eventHandler:
                 _thread.start_new_thread(evt,[self.name,Btn.LONG_PRESS])
 
-    def process(self,state):
-        # create thread to process
-        for evt in self.eventHandler:
-            state = Btn.DOWN if(self.btn.value()==0) else Btn.UP
-            _thread.start_new_thread(evt,[self.name,state])
-            _thread.start_new_thread(self.longPressEvent,())
-
     def addBtnEventListener(self,eventFunc):
         self.eventHandler.append(eventFunc)
 
@@ -551,6 +586,8 @@ class Btn:
         if(findIdx >=0):
             del self.eventHandler[findIdx]
 
+
+
 class mqtt:
 
     def sub(topic,callback,includeID = False):
@@ -559,73 +596,184 @@ class mqtt:
     def pub(topic,msg,includeID = False):
         esp8285.pub(topic,msg,includeID)
 
-import lcd,sensor,time
 
-class webai:
+class fs:
+    def ls():
+        import os
+        a = os.listdir()
+        for file in a:
+            print(file)
 
-    def init():
-        from Maix import utils
-        lcd.init()
-        webai.init_camera_ok = False
-        a = time.ticks()
-        webai.initSensor()
-        webai.btnHandler = []
-        webai.btnL = Btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
-        webai.btnR = Btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
-        webai.btnL.addBtnEventListener(webai.onBtn)
-        webai.btnR.addBtnEventListener(webai.onBtn)
-        webai.mqtt = mqtt
-        webai.cloud = cloud()
-        webai.lcd = lcd
-        webai.camera = sensor
-        webai.kboot_fw_flag = 0x1ffff
-        webai.fwType = None
-        if(utils.heap_free()/1024 > 4000):
-            webai.fwType = 'min'
+    def cat(file):
+        import os
+        lines = ''
+        with open(file,"r") as f:
+            lines = f.readlines()
+        for line in lines:
+            print(line.replace('\n',''))
+        print()
+
+    def rm(file):
+        import os
+        if(file=="*"):
+            a = os.listdir()
+            for filename in a:
+                os.remove(filename)
         else:
-            webai.fwType = 'std'
-        webai.setFW(webai.nowFW())            
-        print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
+            os.remove(file)
 
-    def nowFW():
-        return webai.fwType
-
-    def getFW():
-        fwType = utils.flash_read(webai.kboot_fw_flag,1)[0]
-        return "min" if fwType==0 else "std"
-
+class mem:
     def info():
         from Maix import utils
         import KPU as kpu
+        print("[ FirmwareType:",fw.fwType," 0416]")
         print("heap size:",int(utils.gc_heap_size()/1024),"KB")
         print("mem_free:",int(gc.mem_free()/1024),"KB")
         print("memtest:",kpu.memtest())
 
     def heap(n):
+        from Maix import utils
         utils.gc_heap_size(n*1024)
         import machine
         machine.reset()
 
-    def setFW(name='min'):
-        import machine
+class fw:
+    def init():
+        fw.fwType = None
+        fw.kboot_fw_flag = 0x1ffff
+
+    def now(fwType=None):
+        if(fwType!=None):
+            fw.fwType = fw.get()
+        return fw.fwType
+
+    def get():
+        from Maix import utils
+        fwType = utils.flash_read(fw.kboot_fw_flag,1)[0]
+        return "min" if fwType==1 else "std"
+
+    def set(name='min'):
+        import machine,time
         from Maix import utils
         if name == 'min' or name == 'mini':
-            utils.flash_write(webai.kboot_fw_flag,bytearray([0]))
-            if webai.nowFW() != name:
+            utils.flash_write(fw.kboot_fw_flag,bytearray([1]))
+            if fw.now() != name:
+                time.sleep(1)
                 machine.reset()
         elif name == 'std':
-            utils.flash_write(webai.kboot_fw_flag,bytearray([1]))
-            if webai.nowFW() != name:
+            utils.flash_write(fw.kboot_fw_flag,bytearray([0]))
+            if fw.now() != name:
+                time.sleep(1)
                 machine.reset()
         else:
             raise Exception("wrong fw select !!!")
 
-    def connect(ssid,pwd):
-        esp8285.init(115200*20)
+ #   _____                          _                  
+ #  / ____|                        | |                 
+ # | (___    _ __     ___    __ _  | | __   ___   _ __ 
+ #  \___ \  | '_ \   / _ \  / _` | | |/ /  / _ \ | '__|
+ #  ____) | | |_) | |  __/ | (_| | |   <  |  __/ | |   
+ # |_____/  | .__/   \___|  \__,_| |_|\_\  \___| |_|   
+ #          | |                                        
+ #          |_|                                        
+class Speaker:
+    def __init__(self):
+        from Maix import I2S
+        from fpioa_manager import fm
+        import audio
+        fm.register(board_info.SPK_I2S_OUT, fm.fpioa.I2S2_OUT_D1, force=True)
+        fm.register(board_info.SPK_I2S_WS, fm.fpioa.I2S2_WS, force=True)
+        fm.register(board_info.SPK_I2S_SCLK, fm.fpioa.I2S2_SCLK, force=True)
+        self.wav_dev = I2S(I2S.DEVICE_2)
+        self.wav_dev.channel_config(self.wav_dev.CHANNEL_1, I2S.TRANSMITTER, resolution=I2S.RESOLUTION_16_BIT,cycles=I2S.SCLK_CYCLES_32, align_mode=I2S.RIGHT_JUSTIFYING_MODE)
+        self.audio = audio
+        self.volume = 5
+
+    def setVolume(self, volume):
+        self.volume = volume
+
+    def start(self, folder="", fileName=None, sample_rate=48000):
+        if(fileName != None):
+            if folder=="":
+                cwd = SYSTEM_DEFAULT_PATH
+                if cwd == "flash":
+                    folder = "flash"
+                else:
+                    folder = "sd"
+            self.wav_dev.set_sample_rate(sample_rate)
+            player = self.audio.Audio(path="/"+folder+"/"+fileName+".wav")
+            player.volume(self.volume)
+            player.play_process(self.wav_dev)
+            esp8285.at("AT+SPEAKER=1")
+            while True:
+               ret = player.play()
+               if ret == None:
+                   print("format error")
+                   break
+               elif ret == 0:
+                   break
+            player.finish()
+            esp8285.at("AT+SPEAKER=0")
+        else:
+            print("fileName error")
+
+
+
+import lcd,sensor,time
+class webai:
+
+    def init(camera=False):
+        if hasattr(webai,'initialize'):
+           return
+        webai.debug = False
+        webai.speed = 10
+        webai.initialize = True
+        a = time.ticks()
+        fw.init()
+        fw.now(fwType='qry')
+        esp8285.init(115200*webai.speed)
+        #link obj
+        webai.fs = fs
+        webai.fw = fw
+        webai.mem = mem
+        webai.mqtt = mqtt
+        webai.esp8285 = esp8285
+        webai.lcd = lcd
+        webai.camera = sensor
+        webai.logo()
+        webai.init_camera_ok = False
+        if camera:
+            webai.initSensor()
+        webai.btnHandler = []
+        webai.btnL = Btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
+        webai.btnR = Btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
+        webai.btnL.addBtnEventListener(webai.onBtn)
+        webai.btnR.addBtnEventListener(webai.onBtn)
+        webai.cloud = cloud()
+        webai.ver = os.uname()[6]
+        gc.collect()
+        time.sleep(0.01)
+        print('webai init completed. spend time:', (time.ticks()-a)/1000,'sec')
+        webai.mem.info()
+
+    def logo():
+        img = image.Image('/flash/logo.jpg')
+        lcd.display(img)
+        sp = Speaker()
+        sp.setVolume(20)
+        sp.start(folder="flash", fileName='logo', sample_rate=22050)
+
+    def reset():
+        import machine
+        machine.reset()
+
+    def resetESP8285():
+        esp8285.init(115200*webai.speed)
+
+    def connect(ssid="webduino.io",pwd="webduino"):
         webai.cloud.container = esp8285.deviceID
         if(esp8285.wifiConnect == False):
             esp8285.connect(ssid,pwd)
-
 
     def initSensor():
         sensor.reset()
@@ -647,26 +795,12 @@ class webai:
     def snapshot():
         return sensor.snapshot()
 
-    def show(cloudImg):
-        img = webai.cloud.getImg(cloudImg)
-        webai.lcd.display(img)
-
-
-    def ls():
-        import os
-        a = os.listdir()
-        for file in a:
-            print(file)
-
-    def cat(file):
-        import os
-        lines = ''
-        with open(file,"r") as f:
-            lines = f.readlines()
-        for line in lines:
-            print(line.replace('\n',''))
-        print()
-
-    def rm(file):
-        import os
-        os.remove(file)
+    def show(url="",file="logo.jpg",img=None):
+        if img != None:
+            webai.lcd.display(img)
+        else:
+            if len(url)>0:
+                img = webai.cloud.getImg(url)
+            if len(file)>0:
+                img = image.Image(file)
+            webai.lcd.display(img)
