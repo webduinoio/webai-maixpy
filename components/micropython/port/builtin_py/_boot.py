@@ -1,7 +1,5 @@
-import os
-import sys
-import time
-import gc
+import os,sys,time,gc,lcd
+
 gc.enable()
 sys.path.append('')
 sys.path.append('.')
@@ -15,8 +13,8 @@ else:
     os.chdir("/flash")
 sys.path.append('/flash')
 del devices
-print("[MaixPy] init end")  # for IDE
-print("_boot init end")
+#print("[MaixPy] init end")  # for IDE
+#print("_boot init end")
 # from machine import WDT
 # def on_wdt(self):
 #     print(self.context(), self)
@@ -25,40 +23,18 @@ print("_boot init end")
 for i in range(200):
     time.sleep_ms(1)  # wait for key interrupt(for maixpy ide)
 del i
+
 from fpioa_manager import fm
 from Maix import GPIO
-import lcd
+
 lcd.init()
 fm.fpioa.set_function(7, fm.fpioa.GPIO7)
 resetPin = GPIO(GPIO.GPIO7, GPIO.IN)
 if resetPin.value()==0:
+    os.remove('/flash/main.py')
+    os.sync()
     lcd.clear(0x00F8)
-    print("reset filesystem")
-    f=None
-    try:
-        os.remove('/flash/boot.py')
-    except Exception as e:
-        print("reset boot.py error")
-    try:
-        os.remove('/flash/main.py')
-    except Exception as e:
-        print("reset main.py error")
-    try:
-        with open('/flash/cmd.txt','w') as f:
-            f.write("")
-    except Exception as e:
-        print("reset cmd.txt error")
-    try:
-        with open('/flash/qrcode.cmd','w') as f:
-            f.write("")
-    except Exception as e:
-        print("reset qrcode.cmd error")
-    try:
-        with open('/flash/wifi.json','w') as f:
-            f.write('{"ssid":"%s","pwd":"%s"}'%("webduino.io","webduino"))
-    except Exception as e:
-        print("reset wifi.json error")
-    del f
+    time.sleep(0.5)
     lcd.clear(0xFFFF)
     import machine
     machine.reset()
@@ -69,10 +45,9 @@ gc.collect()
 # check IDE mode
 ide_mode_conf = "/flash/ide_mode.conf"
 ide = True
-# ide = False
 
 try:
-    f = open(ide_mode_conf)
+    f = open(ide_mode_conf,'r')
     f.close()
     del f
 except Exception:
@@ -88,14 +63,11 @@ if ide:
     sys.exit()
 del ide, ide_mode_conf
 
+
 boot_py = '''
 print('skip boot.py')
 '''
 
-# boot_py = '''
-# '''
-
-# detect boot.py
 main_py = '''
 try:
     import gc, lcd, image, sys
@@ -117,80 +89,6 @@ try:
 finally:
     gc.collect()
 '''
-flash_ls = os.listdir()
-# f = open("boot.py", "wb")
-# f.write(boot_py)
-# f.close()
-# del f
-if not "boot.py" in flash_ls:
-    f = open("boot.py", "wb")
-    f.write(boot_py)
-    f.close()
-    del f
-del boot_py
-# f = open("main.py", "wb")
-# f.write(main_py)
-# f.close()
-if not "main.py" in flash_ls:
-    f = open("main.py", "wb")
-    f.write(main_py)
-    f.close()
-    del f
-del main_py
-
-# if "mqtt.main.py" in flash_ls:
-#     cwd=os.getcwd()
-#     code = ""
-#     with open(cwd+"/mqtt.main.py") as f:
-#         code = f.read()
-#     with open(cwd+"/main.py", "w") as f:
-#         f.write(code)
-#     try:
-#         os.remove(cwd+"/mqtt.main.py")
-#     except Exception as e:
-#         print(e)
-#         print("del mqtt.main.py error")
-#     os.sync()
-    # import machine
-    # machine.reset()
-flash_ls = os.listdir("/flash")
-try:
-    sd_ls = os.listdir("/sd")
-except Exception:
-    sd_ls = []
-if "cover.boot.py" in sd_ls:
-    code0 = ""
-    if "boot.py" in flash_ls:
-        with open("/flash/boot.py") as f:
-            code0 = f.read()
-    with open("/sd/cover.boot.py") as f:
-        code = f.read()
-    if code0 != code:
-        with open("/flash/boot.py", "w") as f:
-            f.write(code)
-        import machine
-        machine.reset()
-
-if "cover.main.py" in sd_ls:
-    code0 = ""
-    if "main.py" in flash_ls:
-        with open("/flash/main.py") as f:
-            code0 = f.read()
-    with open("/sd/cover.main.py") as f:
-        code = f.read()
-    if code0 != code:
-        with open("/flash/main.py", "w") as f:
-            f.write(code)
-        import machine
-        machine.reset()
-
-try:
-    del flash_ls
-    del sd_ls
-    del code0
-    del code
-except Exception:
-    pass
 
 banner = '''
  __  __              _____  __   __  _____   __     __
@@ -211,7 +109,9 @@ __      _____| |__   __| |_   _ _ _ __   ___
   \_/\_/ \___|_.__/ \__,_|\__,_|_|_| |_|\___/ 
                                               
 Official Site : https://webduino.io
-__20210416__
+__20210424__
 '''
 print(banner)
 del banner
+
+from _board import webai
