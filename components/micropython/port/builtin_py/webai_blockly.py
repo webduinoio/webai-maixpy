@@ -139,3 +139,78 @@ class ObjectTracking():
     def __del__(self):
         self.kpu.deinit(self.task)
         gc.collect()
+
+
+
+
+class ImageClassification():
+    import KPU as kpu
+    import sensor
+        
+    def __init__(self,flip=0,classes=[],model=None,w=224,h=224):
+        try:
+            self.sensor.reset()
+            self.sensor.set_pixformat(self.sensor.RGB565)
+            self.sensor.set_framesize(self.sensor.QVGA)
+            self.sensor.set_windowing((w, h))
+            self.sensor.set_vflip(flip)
+            self.sensor.set_auto_gain(1)
+            self.sensor.set_auto_whitebal(1)
+            self.sensor.set_auto_exposure(1)
+            self.sensor.set_brightness(3)
+            self.sensor.skip_frames(time = 200)
+            self.sensor.run(1)
+        except Exception as e:
+            print(e)
+            sys.exit()
+            
+        try:
+            cwd="flash"
+            if cwd=="flash":
+                model=0xD40000
+            else:
+                model="/sd/"+model+".kmodel"
+            self.classes=classes
+            self.task = self.kpu.load(model)
+        except Exception as e:
+            print(e)
+            sys.exit()
+    def checkClass(self):
+        try:
+            self.classesArr=[]
+            img = self.sensor.snapshot()
+            fmap = self.kpu.forward(self.task, img)
+            plist=fmap[:]
+            pmax=max(plist)
+            #print(pmax)
+            max_index=plist.index(pmax)
+            #lcd.display(img, oft=(0,0))
+            webai.lcd.display(img)
+            #lcd.draw_string(0, 100, "%.2f:%s "%(pmax, labels[max_index].strip()))
+            objname=self.classes[max_index].strip()
+            print(objname)
+            # lcd.draw_string(0, 100, "%s "%objname,lcd.RED, lcd.WHITE)
+            # lcd.draw_string(0, 150, "%.2f"%pmax,lcd.RED, lcd.WHITE)
+            respList={"x":0,"y":0,"w":0,"h":0,"value":float("%.2f"%pmax),"classid":max_index,"index":0,"objnum":0,"objname":objname}
+            self.classesArr.append(respList)
+            return True
+        except Exception as e:
+            print(e)
+            self.classesArr=[]
+            return False
+
+    def getClass(self):
+        #print(self.classesArr)
+        if(len(self.classesArr)>0):
+            self.classesArr.sort(key = lambda s: s['value'])
+            #print(self.classesArr)
+            return self.classesArr[len(self.classesArr)-1]
+        else:
+            return []
+            
+    def __del__(self):
+        self.kpu.deinit(self.task)
+        gc.collect()
+
+
+
