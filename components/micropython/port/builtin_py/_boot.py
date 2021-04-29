@@ -1,8 +1,19 @@
-import os,sys,time,gc,lcd
+from fpioa_manager import fm
+from Maix import GPIO
+import os,sys,time,gc,lcd,image,_thread
+'''
 
+ _boot.py -> _cmdExec.py -> (0) -> boot.py -------> main.py
+     |              |                            /
+     |              + ----> (1) -> _cmdCheck.py +
+      \
+       +-- _board.py (webAI)
+
+'''
 gc.enable()
 sys.path.append('')
 sys.path.append('.')
+
 
 # chdir to "/sd" or "/flash"
 devices = os.listdir("/")
@@ -13,33 +24,45 @@ else:
     os.chdir("/flash")
 sys.path.append('/flash')
 del devices
-#print("[MaixPy] init end")  # for IDE
-#print("_boot init end")
+
 # from machine import WDT
 # def on_wdt(self):
 #     print(self.context(), self)
 #     self.feed()
 # wdt1 = WDT(id=0, timeout=4000, callback=on_wdt, context={})
-for i in range(200):
+for i in range(300):
     time.sleep_ms(1)  # wait for key interrupt(for maixpy ide)
 del i
 
-from fpioa_manager import fm
-from Maix import GPIO
-
 lcd.init()
+lcd.clear(0xFFFF)
+
+
+img = image.Image()
+img.draw_string(80,100,"Initialize...",scale=2,x_spacing=4)
+lcd.display(img)
+
 fm.fpioa.set_function(7, fm.fpioa.GPIO7)
 resetPin = GPIO(GPIO.GPIO7, GPIO.IN)
 if resetPin.value()==0:
-    os.remove('/flash/main.py')
-    os.sync()
+    try:
+        os.remove('/flash/main.py')
+    except:
+        pass
+    finally:
+        os.sync()
     lcd.clear(0x00F8)
     time.sleep(0.5)
+    img.draw_string(90,100,"Reset OK",scale=2,x_spacing=4)
+    lcd.display(img)
+    time.sleep(2)
     lcd.clear(0xFFFF)
     import machine
     machine.reset()
-fm.unregister(7)
-del resetPin
+time.sleep(0.1)
+#fm.unregister(7)
+img = None
+resetPin = None
 gc.collect()
 
 # check IDE mode
@@ -78,7 +101,7 @@ try:
     loading = image.Image(size=(lcd.width(), lcd.height()))
     # loading.draw_rectangle((0, 0, lcd.width(), lcd.height()), fill=True, color=(255, 0, 0))
     info = "Webduino WebAI"
-    loading.draw_string(int(lcd.width()//2 - len(info) * 5), (lcd.height())//2, info, color=(255, 255, 255), scale=2, mono_space=0)
+    loading.draw_string(int(lcd.width()//2 - len(info) * 5)-10, (lcd.height())//2-20, info, color=(255, 255, 255), scale=2, mono_space=0)
     # v = sys.implementation.version
     # vers = 'V{}.{}.{} : webduino.io'.format(v[0],v[1],v[2])
     # loading.draw_string(int(lcd.width()//2 - len(info) * 6), (lcd.height())//3 + 20, vers, color=(255, 255, 255), scale=1, mono_space=1)
@@ -109,9 +132,9 @@ __      _____| |__   __| |_   _ _ _ __   ___
   \_/\_/ \___|_.__/ \__,_|\__,_|_|_| |_|\___/ 
                                               
 Official Site : https://webduino.io
-__20210424__
+[__20210426__]
 '''
 print(banner)
-del banner
+banner = None
 
 from _board import webai

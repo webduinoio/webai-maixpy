@@ -1,126 +1,13 @@
-'''
-- 其他待整理功能
-- mqtt 命令
-- qrcode 命令
-- 下載模型
-- 下載程式運行
-- 上傳照片(影像辨識)
-- 上傳照片(物件分類)
-- ota wifi
-- ota k210
-'''
 from board import board_info
 from machine import UART
 from fpioa_manager import fm
 from Maix import config,utils,GPIO
 from microWebCli import MicroWebCli
+from webai import MiniHttp,visionService
 import sensor,lcd,machine,time,network,ujson
 import gc,uos,json,os,image,_thread,ubinascii
+_thread.stack_size(8*1024)
 
-class MiniHttp:
-    def readline(self):
-        # return self.raw.readline() # mpy
-        data = b""
-        while True:
-            tmp = self.raw.recv(1)
-            data += tmp
-            if tmp == b'\n':
-                break
-        return data
-
-    def write(self, data):
-        # return self.raw.write(data) # mpy
-        self.raw.send(bytes(data))
-
-    def read(self, len):
-        return self.raw.read(len) # mpy
-        # return self.raw.recv(len)
-
-    def __init__(self):
-        self.raw = None
-
-    def connect(self, url, timeout=2):
-        try:
-            proto, dummy, host, path = url.split("/", 3)
-        except ValueError:
-            proto, dummy, host = url.split("/", 2)
-            path = ""
-
-        if proto == "http:":
-            port = 80
-        elif proto == "https:":
-            port = 443
-        else:
-            raise ValueError("Unsupported protocol: " + proto)
-
-        if ":" in host:
-            host, port = host.split(":", 1)
-            port = int(port)
-
-        import socket
-        ai = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
-        ai = ai[0]
-        if self.raw is not None:
-            self.raw.close()
-        raw = socket.socket(ai[0], ai[1], ai[2])
-        raw.settimeout(timeout)
-
-        raw.connect(ai[-1])
-        if proto == "https:":
-            import ussl as ssl
-            raw = ssl.wrap_socket(raw, server_hostname=host)
-        self.raw = raw
-        self.host = bytes(host, "utf-8")
-        self.path = bytes(path, "utf-8")
-
-    def exit(self):
-        if self.raw != None:
-            self.raw.close()
-            self.raw = None
-
-    def request(self, method, headers={}, data=None):
-        try:
-            self.headers = headers
-            self.write(b"%s /%s HTTP/1.1\r\n" % (method, self.path))
-            if not "Host" in headers:
-                self.write(b"Host: %s\r\n" % self.host)
-            # Iterate over keys to avoid tuple alloc
-            for k in headers:
-                self.write(k)
-                self.write(b": ")
-                self.write(headers[k])
-                self.write(b"\r\n")
-            if data:
-                self.write(b"Content-Length: %d\r\n" % len(data))
-            self.write(b"\r\n")
-            if data:
-                self.write(data)
-            l = self.readline()
-            # print(l)
-            l = l.split(None, 2)
-            status = int(l[1])
-            reason = ""
-            response = {}
-            if len(l) > 2:
-                reason = l[2].rstrip()
-            while True:
-                l = self.readline()
-                if not l or l == b"\r\n":
-                    break
-                if l.startswith(b"Transfer-Encoding:"):
-                    if b"chunked" in l:
-                        raise ValueError("Unsupported " + l)
-                # elif l.startswith(b"Location:") and not 200 <= status <= 299:
-                    # raise NotImplementedError("Redirects not yet supported")
-                try:
-                    tmp = l.split(b': ')
-                    response[tmp[0]] = tmp[1][:-2]
-                except Exception as e:
-                    print(e)
-        except OSError:
-            self.exit()
-            raise
-        return (status, reason, response)
 
 class cfg:
 
@@ -142,14 +29,20 @@ class cfg:
     def clear():
         cfg.save({})
 
+    def reset():
+        cfg.save({})
+
     def load():
         jsonData = utils.flash_read(cfg.data,cfg.size)
-        cfg.size = len(jsonData)
-        return ujson.loads(jsonData)
+        try:
+            cfg.size = len(jsonData)
+            return ujson.loads(jsonData)
+        except:
+            raise Exception("parse error:"+ str(jsonData))
 
     def save(obj):
         jsonData = ujson.dumps(obj)
-        cfg.size = len(jsonData)
+        cfg.size = len(jsonData.encode())
         #write size
         hi = cfg.size // 255
         lo = cfg.size % 255
@@ -223,13 +116,14 @@ class cloud:
         if showProgress:
             print("redirect url:" , url)
         http = MiniHttp()
-        block_size = 10240
+        block_size = 10240*2
         start = time.ticks()
-        start_pos = address
+        start_pos = 0
         file_pos, filesize, errCount = 0, 0, 0
         if not filename==None:
             saveFile = open(filename,'wb')
-            start_pos = 0
+        else:
+            start_pos = address if type(address) is int else int(address,16)
         while True:
             try:
                 if http.raw is None:
@@ -265,7 +159,7 @@ class cloud:
                            pass
                         percent = int((file_pos / filesize)*1000)//10
                         if showProgress:
-                            webai.draw_string(70,110,"進度..."+str(percent)+"%",scale=2)
+                            webai.draw_string(80,110,"進度..."+str(percent)+"%",scale=2)
                         if len(data) == (file_end - file_pos):
                             print("writing:",hex(start_pos+file_pos),'~', hex(start_pos+file_end),percent,'% ,',speed,"KB")
                             if not address==None:
@@ -283,10 +177,16 @@ class cloud:
                 if errCount>2:
                     raise e
         if showProgress:
-            webai.draw_string(50,10,"下載完成  ",scale=3)
+            webai.draw_string(110,100,"下載完成  ",scale=2)
         http.exit()
         if not filename==None:
             saveFile.close()
+
+    def uploadPic(self,url,hashKey,dsname,files):
+        import gc,time,ubinascii,machine,uos
+        from microWebCli import MicroWebCli
+        vs = visionService(url,hashkey)
+        return vs.fileUpload(dsname,shared='false',files)
 
     def putBytearray(self,_bytearray,desFile,retry=3):
         while True:
@@ -487,7 +387,6 @@ class esp8285:
         esp8285.wlan = network.ESP8285(esp8285.uart)
         fm.register(18, fm.fpioa.UART3_RX, force=True)
         esp8285.uart_cb = UART(UART.UART3, 115200,timeout=5000,read_buf_len=10240,callback=esp8285.mqttCallback)
-        _thread.stack_size(16*1024)
         while esp8285.uart_cb.any():
             esp8285.uart_cb.readline()
         esp8285.getInfo()
@@ -517,7 +416,7 @@ class esp8285:
                     if topic in esp8285.subs:
                        esp8285.subs[topic](data)
         except Exception as ee:
-            print('mqttCallback:',ee)
+            print('mqttCallback err:',ee)
 
     def wifiReady():
         while esp8285.wifiConnect == False:
@@ -571,7 +470,7 @@ class esp8285:
         reset.value(0)
         time.sleep(0.01)
         reset.value(1)
-        fm.unregister(pin8285)
+        #fm.unregister(pin8285)
 
     def connect(SSID="webduino.io", PWD="webduino"):
         err = 0
@@ -601,6 +500,7 @@ class esp8285:
                 esp8285.deviceID = info[9:-2]
             if(info[:12]=='Bin version:'):
                 esp8285.ver = info[12:-2]
+        return resp
 
     def at(command, timeout=5000):
         esp8285.uart.write(command + '\r\n')
@@ -706,6 +606,8 @@ class mqtt:
         esp8285.pub(topic,msg,includeID)
 
 class fs:
+    def reset():
+        webai.cloud.download('https://share.webduino.io/storage/download/0422_121635.093_m_0x400000_maixpy_spiffs.img',address=0x400000,img=False,redirect=True,showProgress=True)        
     def ls():
         import os
         a = os.listdir()
@@ -736,6 +638,9 @@ class fs:
             f.write(line)
         finally:
             f.close()
+
+    def size(file):
+        return os.stat(file)[6]
 
     def rm(file):
         import os
@@ -865,7 +770,12 @@ class speaker:
 
 class cmdProcess:
     def load():
+        if not webai.esp8285.wifiConnect:
+            print("wifi offline , skip cmdProcess load()")
+            return
+        print("report boot")
         cmdProcess.reportBoot()
+        print("report boot...OK")
         json = webai.cfg.get("cmd")
         if not json==None:
             webai.cfg.remove("cmd")
@@ -880,6 +790,7 @@ class cmdProcess:
         gc.collect()
         if(cmdData[:1]=='"' and cmdData[-1:]=='"'):
             cmdData = cmdData[1:-1]
+        # specical process _DEPLOY    
         if(cmdData[:9]=='_DEPLOY/h'):
             #print("ignore! skip command")
             return
@@ -894,10 +805,15 @@ class cmdProcess:
     儲存命令前，先判斷是否有指定romType，有的話就進行設定 romType
     '''
     def saveCmd(cmdData):
-        #print("cmdProcess saving..",cmdData)
+        print("saveCmd:",cmdData)
         webai.cfg.put("cmd",cmdData)
         cmdProcess.reportSaveOK()
-        print("cmdProcess save done.")
+        if(cmdData[:8]=='_DEPLOY/'):
+            info = ujson.loads(cmdData[8:])
+            if 'rom' in info:
+                romType = info['rom'] # std or min
+                print("!!!!! set romType=%s !!!!!"%romType)
+                webai.fw.set(romType)
         machine.reset()
         #for test
         #cmdProcess.init()
@@ -924,7 +840,7 @@ class cmdProcess:
         gc.collect()
 
     def reportSaveOK():
-        webai.draw_string(110,100,"下載完成  ",scale=2)
+        webai.draw_string(110,100,"執行命令  ",scale=2)
         webai.mqtt.pub("PONG","saveCmd",includeID=True)
 
     def reportBoot():
@@ -950,6 +866,7 @@ class cmdProcess:
     def _DEPLOY(info):
         # get pythonCode to main.py
         info = ujson.loads(info)
+        print("DEPLOY CMD:",info)
         # server 需改成提供 http:// 方式
         url = info['url'].replace('https://','http://')
         webai.cloud.download(url,img=False,redirect=False,filename='/flash/main.py')
@@ -957,11 +874,109 @@ class cmdProcess:
     def _TAKEPIC_YOLO(jsonArray):
         print("_TAKEPIC_YOLO>",jsonArray)
 
-    def _TAKEPIC_MOBILENET(jsonArray):
-        print("_TAKEPIC_MOBILENET>",jsonArray)
+#_TAKEPIC_MOBILENET> 
+# {"dsname":"qq",
+#  "count":"20",
+#  "url":"https://vision-api.webduino.io/mlapi/datasets/uploadimgs", 
+#  "hashKey": "286d63a42baaf574d46277247b5e978d", 
+#  "flip": "1"}
+#
+    def _TAKEPIC_MOBILENET(strObj):
+        jsonObj = ujson.loads(strObj)
+        cnt = 0
+        files = []
+        completed = False
+        dsname = jsonObj['dsname']
+        count = int(jsonObj['count'])
+        url = jsonObj['url']
+        url = url.replace('https://','http://')
+        hashKey = jsonObj['hashKey']
+        flip = int(jsonObj['flip'])
+        webai.camera.set_vflip(flip==0) #鏡頭上下翻轉
+        print("upload:",url)
 
-    def _DOWNLOAD_MODEL(jsonArray):
-        print("_DOWNLOAD_MODEL>",jsonArray)
+        def onclick(name,state):
+            nonlocal cnt,files,completed
+            if(name=='btnL' and state == 1):
+                cnt = cnt + 1
+                filename = '/flash/_cache_'+str(cnt)+'.jpg'
+                webai.img.save(filename)
+                files.append(filename)
+                print('save:',cnt)
+                if completed:
+                    webai.reset()
+                if(cnt == count):
+                    completed = True
+
+        webai.addBtnListener(onclick)
+        while True:
+            webai.img = webai.camera.snapshot()
+            snap = "0"+str(cnt)+" " if cnt < 10 else str(cnt)+" "
+            end = "0"+str(count)+" " if count < 10 else str(count)+" "
+            webai.draw_string(25,5,snap,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
+            webai.draw_string(35,35,"/",img=webai.img,scale=2,x_spacing=2,lcd_show=False)
+            webai.draw_string(25,65,end,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
+            #左上
+            webai.img.draw_line(48,8,98,8,0xFFFF,2)
+            webai.img.draw_line(48,8,48,48,0xFFFF,2)
+            #右上
+            webai.img.draw_line(222,8,272,8,0xFFFF,2)
+            webai.img.draw_line(272,8,272,48,0xFFFF,2)
+            #左下
+            webai.img.draw_line(48,232,98,232,0xFFFF,2)
+            webai.img.draw_line(48,192,48,232,0xFFFF,2)
+            #右下
+            webai.img.draw_line(222,232,272,232,0xFFFF,2)
+            webai.img.draw_line(272,192,272,232,0xFFFF,2)
+            webai.show(img=webai.img)
+            if completed:
+                break
+            time.sleep(0.001)
+
+        webai.img = None
+        time.sleep(0.001)
+        gc.collect()
+        webai.state()
+        webai.mem.info()
+
+        if not webai.esp8285.at('AT')[1].decode()[:2] == 'OK':
+            print("連線異常！")
+        webai.draw_string(110,90,"上傳中...   ",scale=2)
+        try:
+            state = webai.cloud.uploadPic(url,hashKey,dsname,files)
+            time.sleep(0.001)
+            gc.collect()
+            webai.img = image.Image()
+            webai.draw_string(110,80,"上傳完成  ",scale=2,img=webai.img,lcd_show=False)
+            webai.draw_string(95,130,"請重新啟動  ",scale=2,img=webai.img)
+        except:
+            time.sleep(0.001)
+            gc.collect()
+            webai.img = image.Image()
+            webai.draw_string(110,80,"上傳失敗  ",scale=2,img=webai.img,lcd_show=False)
+            webai.draw_string(95,130,"請重新操作  ",scale=2,img=webai.img)
+        finally:
+            for i in files:
+                webai.fs.rm(i)
+                print("delete ",i)
+                os.sync()
+            try:
+                webai.fs.rm('main.py')
+            except:
+                pass
+            os.sync()
+            while True:
+                time.sleep(1)
+
+    #{ "fileName":"k-model",
+    #  "modelType":"mobileNet",
+    #  "url":"http://vision-api.webduino.io/ml_models/5c129ef0-911f-11eb-83e1-536e68f620ec/model.kmodel",
+    #  "modelAddress":"0xD40000"}
+    def _DOWNLOAD_MODEL(strObj):
+        jsonObj = ujson.loads(strObj)
+        print("_DOWNLOAD_MODEL>",jsonObj)
+        webai.cloud.download(jsonObj['url'],address=jsonObj['modelAddress'],img=False,redirect=True,showProgress=True)
+
 
     def _DOWNLOAD_FILE(jsonArray):
         print("_DOWNLOAD_FILE>",jsonArray)
@@ -970,6 +985,7 @@ class cmdProcess:
 class webai:
 
     def init(camera=True,speed=20):
+        webai.btnHandler = []
         if hasattr(webai,'initialize'):
            return
         webai.img = None
@@ -995,8 +1011,9 @@ class webai:
         webai.speaker = speaker()
         webai.init_camera_ok = False
         if camera:
+            print("init camera...")
             webai.initCamera()
-        webai.btnHandler = []
+            print("init camera done.")
         webai.btnL = btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
         webai.btnR = btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
         webai.btnL.addBtnEventListener(webai.onBtn)
@@ -1004,8 +1021,9 @@ class webai:
         webai.cloud = cloud()
         webai.ver = os.uname()[6]
         gc.collect()
-
+        print("init cmdProcess...")
         if not cmdProcess.load():
+            print("show logo..")
             webai.logo()
             time.sleep(0.01)
             gc.collect()
@@ -1014,14 +1032,24 @@ class webai:
             print('spend time:', (time.ticks()-a)/1000,'sec')
             print('')
             webai.mem.info()
+        print("init cmdProcess...done")
         lcd.clear()    
         time.sleep(0.01)
         gc.collect()
 
-    def draw_string(x, y, text, img=None, color=(255,255,255), scale=5,mono_space=False,lcd_show=True):
+
+    def state():
+        print("")
+        print("device ID:",webai.deviceID)
+        print("wifi state:",webai.esp8285.wifiConnect)
+        print("mqtt state:",webai.esp8285.mqttConnect)
+        print("")
+
+    def draw_string(x, y, text, img=None, color=(255,255,255), scale=5,x_spacing=None, mono_space=False,lcd_show=True):
         if img == None:
             img = image.Image()
-        x_spacing = 8*scale
+        if x_spacing==None:
+            x_spacing = 8*scale
         image.font_load(image.UTF8, 16, 16, 0x980000)
         img.draw_string(x, y, text, scale=scale, color=color, x_spacing=x_spacing, mono_space=mono_space)
         image.font_free()
@@ -1081,7 +1109,6 @@ class webai:
         webai.img = webai.camera.snapshot()
         return webai.img
         
-
     def show(url="",file="logo.jpg",img=None):
         if img != None:
             webai.lcd.display(img)
@@ -1094,5 +1121,5 @@ class webai:
             webai.lcd.display(img)
 
 webai.init(camera=True,speed=10)
-webai.connect()
+webai.connect("webduino.io","webduino")
 webai.mqtt.sub('PING',cmdProcess.run,includeID=True)

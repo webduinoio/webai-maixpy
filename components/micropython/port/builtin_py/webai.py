@@ -2,6 +2,185 @@ import KPU as kpu
 import machine , ubinascii , os
 from microWebCli import MicroWebCli
 import webai_blockly
+
+class visionService:
+    class Field:
+        def __init__(self,boundary,key,value):
+            visionService.Field.boundary = boundary
+            self.boundary = b'------%s\r\n' % boundary
+            self.key = b'Content-Disposition: form-data; name="%s"\r\n' % key
+            self.CRLF = b'\r\n'
+            self.value = b'%s\r\n' % value
+        def data(self):
+            return b''.join([self.boundary,self.key,self.CRLF,self.value])
+        def length(self):
+            return len(self.data())
+
+    class Filename:
+        def __init__(self,boundary,filename):
+            visionService.Field.boundary = boundary
+            self.filename = filename
+            self.boundary = b'------%s\r\n' % boundary
+            self.name = b'Content-Disposition: form-data; name="%s"; filename="%s"\r\n' % ('image', filename[filename.find("/",1)+1:])
+            self.CNT = b'Content-Type: image/jpeg\r\n'
+            self.CRLF = b'\r\n'
+            self.DATA = None # file bytearray
+        def destroy(self):
+            self.DATA = None
+            time.sleep(0.001)
+            gc.collect()
+        def data(self):
+            with open(self.filename, 'rb') as f:
+                self.DATA = f.read()
+            return b''.join([self.boundary,self.name,self.CNT,self.CRLF,self.DATA,self.CRLF])
+        def length(self):
+            return os.stat(self.filename)[6]+len(b''.join([self.boundary,self.name,self.CNT,self.CRLF,self.CRLF]))
+
+
+    def __init__(self,url,hashkey):
+        self.url = url+'?hashkey='+hashkey
+        self.boundary = "webAI"+ubinascii.hexlify(machine.unique_id()[:14]).decode('ascii')
+
+    def countFilesSize(self,files):
+        self.fileSize = 0
+        for i in files:
+            self.fileSize = self.fileSize + visionService.Filename(self.boundary,i).length()
+        return self.fileSize
+
+    def fileUpload(self,dsname,shared,files):
+        webai.esp8285.init(115200*20)
+        self.fileSize = self.countFilesSize(files)
+        boundary = self.boundary
+        shared_field = visionService.Field(boundary,'shared',shared)
+        dsname_field = visionService.Field(boundary,'dsname',dsname)
+        bodyEnd = b''.join([b'\r\n------%s--' % boundary, b'\r\n'])
+        bodyLen = shared_field.length()+dsname_field.length()+len(bodyEnd)+self.fileSize
+        try:
+            wCli = MicroWebCli(self.url, 'POST')
+            wCli.OpenRequest(None, 'multipart/form-data; boundary=----%s' % boundary, str(bodyLen))
+            print("uploading...total size:",bodyLen)
+            wCli._write(shared_field.data())
+            wCli._write(dsname_field.data())
+            for i in files:
+                print("uploading...file:",i)
+                _file = visionService.Filename(boundary,i)
+                wCli._write(_file.data())
+                _file.destroy()
+            wCli._write(bodyEnd)
+            print("write done.")
+            return wCli.GetResponse().IsSuccess()
+        except Exception as ee:
+            print("Err:",ee)
+        finally:
+            wCli.Close()
+
+
+class MiniHttp:
+    def readline(self):
+        # return self.raw.readline() # mpy
+        data = b""
+        while True:
+            tmp = self.raw.recv(1)
+            data += tmp
+            if tmp == b'\n':
+                break
+        return data
+
+    def write(self, data):
+        # return self.raw.write(data) # mpy
+        self.raw.send(bytes(data))
+
+    def read(self, len):
+        return self.raw.read(len) # mpy
+        # return self.raw.recv(len)
+
+    def __init__(self):
+        self.raw = None
+
+    def connect(self, url, timeout=2):
+        try:
+            proto, dummy, host, path = url.split("/", 3)
+        except ValueError:
+            proto, dummy, host = url.split("/", 2)
+            path = ""
+
+        if proto == "http:":
+            port = 80
+        elif proto == "https:":
+            port = 443
+        else:
+            raise ValueError("Unsupported protocol: " + proto)
+
+        if ":" in host:
+            host, port = host.split(":", 1)
+            port = int(port)
+
+        import socket
+        ai = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+        ai = ai[0]
+        if self.raw is not None:
+            self.raw.close()
+        raw = socket.socket(ai[0], ai[1], ai[2])
+        raw.settimeout(timeout)
+
+        raw.connect(ai[-1])
+        if proto == "https:":
+            import ussl as ssl
+            raw = ssl.wrap_socket(raw, server_hostname=host)
+        self.raw = raw
+        self.host = bytes(host, "utf-8")
+        self.path = bytes(path, "utf-8")
+
+    def exit(self):
+        if self.raw != None:
+            self.raw.close()
+            self.raw = None
+
+    def request(self, method, headers={}, data=None):
+        try:
+            self.headers = headers
+            self.write(b"%s /%s HTTP/1.1\r\n" % (method, self.path))
+            if not "Host" in headers:
+                self.write(b"Host: %s\r\n" % self.host)
+            # Iterate over keys to avoid tuple alloc
+            for k in headers:
+                self.write(k)
+                self.write(b": ")
+                self.write(headers[k])
+                self.write(b"\r\n")
+            if data:
+                self.write(b"Content-Length: %d\r\n" % len(data))
+            self.write(b"\r\n")
+            if data:
+                self.write(data)
+            l = self.readline()
+            # print(l)
+            l = l.split(None, 2)
+            status = int(l[1])
+            reason = ""
+            response = {}
+            if len(l) > 2:
+                reason = l[2].rstrip()
+            while True:
+                l = self.readline()
+                if not l or l == b"\r\n":
+                    break
+                if l.startswith(b"Transfer-Encoding:"):
+                    if b"chunked" in l:
+                        raise ValueError("Unsupported " + l)
+                # elif l.startswith(b"Location:") and not 200 <= status <= 299:
+                    # raise NotImplementedError("Redirects not yet supported")
+                try:
+                    tmp = l.split(b': ')
+                    response[tmp[0]] = tmp[1][:-2]
+                except Exception as e:
+                    print(e)
+        except OSError:
+            self.exit()
+            raise
+        return (status, reason, response)
+
+
 class mcar:
     ready = False
     def init():
@@ -56,100 +235,6 @@ class mcar:
         else:
             mcar.rightDirection.value(1)
             mcar.rightWheel.duty(100+val)
-
-
-
-class cloud:
-    ready = False
-    container = 'default'
-    def init():
-        if(cloud.ready):
-            return
-        cloud.ready = True
-        from microWebCli import MicroWebCli
-        import machine , ubinascii , os , image
-        from webai_blockly import readUID
-        cloud.MicroWebCli = MicroWebCli
-        cloud.ubinascii = ubinascii
-        cloud.machine = machine
-        cloud.os = os
-        cloud.image = image
-        while True:
-            cloud.container = readUID()
-            if(cloud.container!=""):
-                break
-
-    def saveImg(filename,img):
-        destName = filename
-        filename = '_tmp_.jpg'
-        img.save(filename)
-        cloud.init()
-        url = "http://share.webduino.io/_upload/"+cloud.container+"/"
-        wCli = cloud.MicroWebCli(url, 'POST')
-        fileSize = cloud.os.stat('/flash/'+filename)[6]
-        print("fileSize:",fileSize)
-        boundary = "webAI"+cloud.ubinascii.hexlify(cloud.machine.unique_id()[:14]).decode('ascii')
-        bodyStart = \
-        '------%s\r\n'%boundary+\
-        'Content-Disposition: form-data; name="file"; filename="'+destName+'"\r\n'+\
-        'Content-Type: application/octet-stream\r\n\r\n'
-        bodyEnd =  '\r\n------%s--' % boundary
-        bodyLen = len(bodyStart) + fileSize + len(bodyEnd)
-        wCli.OpenRequest(contentType='multipart/form-data; boundary=----%s' % boundary,contentLength=bodyLen)
-        wCli._write(bodyStart)
-        try:
-            f = open(filename,'rb')
-            readLen = 0
-            bufLen = 10240
-            while True:
-                readBlock = f.read(bufLen)
-                readBytes = len(readBlock)
-                readLen += readBytes
-                wCli._write(readBlock)
-                print('upload...',readLen,'/',fileSize)
-                if(readLen == fileSize):
-                    break;
-        finally:
-            f.close()
-            cloud.os.remove(filename)
-        wCli._write(bodyEnd)
-        wCli.Close()
-
-    def loadImg(uploadFile):
-        saveFile = '_tmp_.jpg'
-        cloud.init()
-        url = "http://share.webduino.io/storage/_download/"+cloud.container+"/"+uploadFile
-        wCli = cloud.MicroWebCli(url)
-        try:
-            f = open(saveFile,"wb")
-            wCli.OpenRequest()
-            buf  = bytearray(10240)
-            resp = wCli.GetResponse()
-            fileLen = resp.GetContentLength()
-            if resp.IsSuccess() :
-              readLen = 0
-              bufLen = len(buf)
-              while not resp.IsClosed() :
-                if(fileLen-readLen >= bufLen):
-                  x = resp.ReadContentInto(buf)
-                else:
-                  x = resp.ReadContentInto(buf,fileLen-readLen)
-                readLen += x
-                print("download:",readLen,'/',fileLen)
-                if x < len(buf) :
-                  buf = buf[:x]
-                  f.write(buf)
-                  break
-                f.write(buf)
-            else:
-                print("download failure")
-        finally:
-            f.close()
-            wCli.Close()
-        img = cloud.image.Image(saveFile)
-        cloud.os.remove(saveFile)
-        return img
-
 
 
 class ColorObject:
