@@ -182,11 +182,13 @@ class cloud:
         if not filename==None:
             saveFile.close()
 
-    def uploadPic(self,url,hashKey,dsname,files):
+    def uploadPic(self,url,hashkey,dsname,files):
         import gc,time,ubinascii,machine,uos
         from microWebCli import MicroWebCli
+        print("create visionService...")
         vs = visionService(url,hashkey)
-        return vs.fileUpload(dsname,shared='false',files)
+        print("vs.fileUpload...")
+        return vs.fileUpload(dsname,'false',files)
 
     def putBytearray(self,_bytearray,desFile,retry=3):
         while True:
@@ -526,8 +528,8 @@ class esp8285:
                     elif "busy p" in myLine:
                         return "busy processing"
                 else:
-                    print("timeout")
-                    return "timeout"
+                    print("esp8285 timeout!")
+                    return "esp8285 timeout"
             return data
         except Exception as e:
             print(e)
@@ -621,7 +623,6 @@ class fs:
             lines = f.readlines()
         for line in lines:
             print(line.replace('\n',''))
-        print()
 
     def load(file):
         import os
@@ -657,7 +658,6 @@ class mem:
         import KPU as kpu
         print("[ FirmwareType:",fw.fwType," v1.0]")
         print("heap size:",int(utils.gc_heap_size()/1024),"KB")
-        print("")
         print("mem_free:",int(gc.mem_free()/1024),"KB")
         print("memtest:",kpu.memtest())
 
@@ -880,8 +880,8 @@ class cmdProcess:
 #  "url":"https://vision-api.webduino.io/mlapi/datasets/uploadimgs", 
 #  "hashKey": "286d63a42baaf574d46277247b5e978d", 
 #  "flip": "1"}
-#
     def _TAKEPIC_MOBILENET(strObj):
+        webai.esp8285.init(115200*5)
         jsonObj = ujson.loads(strObj)
         cnt = 0
         files = []
@@ -900,7 +900,14 @@ class cmdProcess:
             if(name=='btnL' and state == 1):
                 cnt = cnt + 1
                 filename = '/flash/_cache_'+str(cnt)+'.jpg'
-                webai.img.save(filename)
+                cropImg = webai.img.copy([48,8,224,224])
+                webai.img = None
+                time.sleep(0.001)
+                gc.collect()
+                cropImg.save(filename)
+                cropImg = None
+                time.sleep(0.001)
+                gc.collect()
                 files.append(filename)
                 print('save:',cnt)
                 if completed:
@@ -941,6 +948,8 @@ class cmdProcess:
 
         if not webai.esp8285.at('AT')[1].decode()[:2] == 'OK':
             print("連線異常！")
+        else:
+            print("wifi OK !!!!")
         webai.draw_string(110,90,"上傳中...   ",scale=2)
         try:
             state = webai.cloud.uploadPic(url,hashKey,dsname,files)
@@ -1123,3 +1132,4 @@ class webai:
 webai.init(camera=True,speed=10)
 webai.connect("webduino.io","webduino")
 webai.mqtt.sub('PING',cmdProcess.run,includeID=True)
+

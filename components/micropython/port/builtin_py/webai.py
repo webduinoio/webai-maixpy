@@ -1,7 +1,6 @@
 import KPU as kpu
-import machine , ubinascii , os
+import machine , ubinascii , os , time , gc
 from microWebCli import MicroWebCli
-import webai_blockly
 
 class visionService:
     class Field:
@@ -48,7 +47,6 @@ class visionService:
         return self.fileSize
 
     def fileUpload(self,dsname,shared,files):
-        webai.esp8285.init(115200*20)
         self.fileSize = self.countFilesSize(files)
         boundary = self.boundary
         shared_field = visionService.Field(boundary,'shared',shared)
@@ -69,8 +67,6 @@ class visionService:
             wCli._write(bodyEnd)
             print("write done.")
             return wCli.GetResponse().IsSuccess()
-        except Exception as ee:
-            print("Err:",ee)
         finally:
             wCli.Close()
 
