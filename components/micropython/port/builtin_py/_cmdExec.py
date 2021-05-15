@@ -1,1 +1,4 @@
-print('skip _cmdExec.py')
+print('!!!!!!! _cmdExec.py !!!!!!!')
+raise Exception("run boot.py")
+
+

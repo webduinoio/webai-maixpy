@@ -1,73 +1,109 @@
-print('exec by /flash/webai_blockly.py')
+print('exec by /filesystem/webai_blockly.py')
+
+
 from _board import webai
-import image,gc,sys
+import image,gc,sys,time,_thread,os
+
+
+SYSTEM_BTN_L = webai.btnL.btn
+SYSTEM_BTN_R = webai.btnR.btn
+SYSTEM_MQTT_TOPIC = webai.esp8285.subQueue
+
+SYSTEM_ALLOCATE_LOCK = _thread.allocate_lock()
+
+class Mqtt:
+    def push(topic,msg):
+        webai.mqtt.pub(topic,msg)
+
+    def sub(topic):
+        webai.mqtt.sub(topic,Mqtt.procMsg)
+        
+    def procMsg(topic,msg):
+        webai.esp8285.subQueue[topic] = msg
+
 
 class Lcd:
-	def __init__(self):
-		print("webai lcd init")
-		webai.img = image.Image()
+    def __init__(self):
+        print("webai lcd init")
+        webai.img = image.Image()
 
-	def clear(self):
-		webai.lcd.clear()
+    def clear(self):
+        webai.lcd.clear()
+
+    def width(self):
+        return webai.lcd.width()
+
+    def height(self):
+        return webai.lcd.height()
+
+    def drawCircle(self, x, y, radius, color=0xffffff, thickness=1, fill=False):
+        webai.img.draw_circle(x, y, radius, color, thickness, fill)
+        webai.lcd.display(webai.img)
+
+    def drawLine(self, x0, y0, x1, y1, color=0xffffff, thickness=1):
+        webai.img.draw_line(x0, y0, x1, y1, color, thickness)
+        webai.lcd.display(webai.img)
+
+    def drawRectangle(self, x, y, w, h, color=0xffffff, thickness=1, fill=False):
+        webai.img.draw_rectangle(x, y, w, h, color, thickness, fill)
+        webai.lcd.display(webai.img)
+
+    def drawArrow(self, x0, y0, x1, y1, color=0xffffff, thickness=1):
+        webai.img.draw_arrow(x0, y0, x1, y1, color, thickness)
+        webai.lcd.display(webai.img)
+
+    def drawCross(self, x, y, color=0xffffff, size=5, thickness=1):
+        webai.img.draw_cross(x, y, color, size, thickness)
+        webai.lcd.display(webai.img)
 
 
-	def width(self):
-		return webai.lcd.width()
+    def drawString(self, x, y, text, color=(255,255,255), scale=2, x_spacing=20, mono_space=False,img=None,display=True):
+        if not img==None:
+            webai.img = img
+        webai.draw_string(x, y, text, img=webai.img, color=color, scale=scale,mono_space=mono_space,lcd_show=display,x_spacing=x_spacing)
 
-	def height(self):
-		return webai.lcd.height()
+    def draw_string(self, x, y, msg, strColor, bgColor):
+        if not msg == '':
+            webai.lcd.draw_string(x, y, str(msg), strColor, bgColor)
 
-	def drawCircle(self, x, y, radius, color=0xffffff, thickness=1, fill=False):
-		webai.img.draw_circle(x, y, radius, color, thickness, fill)
-		webai.lcd.display(webai.img)
-
-	def drawLine(self, x0, y0, x1, y1, color=0xffffff, thickness=1):
-		webai.img.draw_line(x0, y0, x1, y1, color, thickness)
-		webai.lcd.display(webai.img)
-
-	def drawRectangle(self, x, y, w, h, color=0xffffff, thickness=1, fill=False):
-		webai.img.draw_rectangle(x, y, w, h, color, thickness, fill)
-		webai.lcd.display(webai.img)
-
-	def drawArrow(self, x0, y0, x1, y1, color=0xffffff, thickness=1):
-		webai.img.draw_arrow(x0, y0, x1, y1, color, thickness)
-		webai.lcd.display(webai.img)
-
-	def drawCross(self, x, y, color=0xffffff, size=5, thickness=1):
-		webai.img.draw_cross(x, y, color, size, thickness)
-		webai.lcd.display(webai.img)
-
-
-	def drawString(self, x, y, text, color=(255,255,255), scale=2, x_spacing=20, mono_space=False,img=None):
-		if not img==None:
-			webai.img = img
-		webai.draw_string(x, y, text, img=webai.img, color=color, scale=scale,mono_space=mono_space,lcd_show=True)
-
-	def draw_string(self, x, y, msg, strColor, bgColor):
-		if not msg == '':
-			webai.lcd.draw_string(x, y, str(msg), strColor, bgColor)
-
-	def displayImg(self,img=None):
-		webai.img = None
-		gc.collect()
-		if type(img) is str:
-			if(len(img.lower())<4 or img.lower()[-4:] != '.jpg'):
-				img = img + ".jpg"
-			webai.img = image.Image(img)
-		else:
-			webai.img = img
-		webai.show(img=webai.img)
+    def displayImg(self,img=None):
+        webai.img = None
+        gc.collect()
+        if type(img) is str:
+            if(img[:4]=='http'):
+                try:
+                    print("download:",img)
+                    webai.cloud.download(img,filename='_cache_.jpg',resize=320)
+                    img = '_cache_.jpg'
+                except Exception as ee:
+                    print("displayImg err:",ee)
+            elif(len(img.lower())<4 or img.lower()[-4:] != '.jpg'):
+                img = img + ".jpg"
+            webai.img = image.Image(img)
+        else:
+            webai.img = img
+        webai.lcd.display(webai.img)
 
 class Camera:
-	def snapshot(self):
-		return webai.snapshot()
+    def setFlip(self,flip):
+        webai.camera.set_vflip(flip)
+
+    def snapshot(self):
+        return webai.snapshot()
+
+    def save(self,name):
+        webai.snapshot()
+        if not '.jpg' in name:
+            name = name + '.jpg'
+        webai.img.save(name)
 
 class Speaker:
-	def start(self,fileName='logo', sample_rate=11025):
-		webai.speaker.play(filename=fileName,sample_rate=sample_rate)
 
-	def setVolume(self,vol):
-		webai.speaker.setVolume(vol)
+    def start(self,fileName='logo', sample_rate=11025):
+        webai.speaker.play(filename=fileName,sample_rate=sample_rate)
+
+    def setVolume(self,vol):
+        webai.speaker.setVolume(vol)
 
 
 class ObjectTracking():
@@ -81,10 +117,10 @@ class ObjectTracking():
             webai.camera.set_framesize(self.sensor.QVGA)
             webai.camera.set_windowing((w, h))
             webai.camera.set_vflip(flip)
-            webai.camera.set_auto_gain(1)
-            webai.camera.set_auto_whitebal(1)
-            webai.camera.set_auto_exposure(1)
-            webai.camera.set_brightness(3)
+            #webai.camera.set_auto_gain(1)
+            #webai.camera.set_auto_whitebal(1)
+            #webai.camera.set_auto_exposure(1)
+            #webai.camera.set_brightness(3)
             webai.camera.skip_frames(time = 2000)
             webai.camera.run(1)
         except Exception as e:
@@ -154,10 +190,10 @@ class ImageClassification():
             self.sensor.set_framesize(self.sensor.QVGA)
             self.sensor.set_windowing((w, h))
             self.sensor.set_vflip(flip)
-            self.sensor.set_auto_gain(1)
-            self.sensor.set_auto_whitebal(1)
-            self.sensor.set_auto_exposure(1)
-            self.sensor.set_brightness(3)
+            #self.sensor.set_auto_gain(1)
+            #self.sensor.set_auto_whitebal(1)
+            #self.sensor.set_auto_exposure(1)
+            #self.sensor.set_brightness(3)
             self.sensor.skip_frames(time = 200)
             self.sensor.run(1)
         except Exception as e:
@@ -188,11 +224,12 @@ class ImageClassification():
             webai.lcd.display(img)
             #lcd.draw_string(0, 100, "%.2f:%s "%(pmax, labels[max_index].strip()))
             objname=self.classes[max_index].strip()
-            print(objname)
+            #print(objname)
             # lcd.draw_string(0, 100, "%s "%objname,lcd.RED, lcd.WHITE)
             # lcd.draw_string(0, 150, "%.2f"%pmax,lcd.RED, lcd.WHITE)
             respList={"x":0,"y":0,"w":0,"h":0,"value":float("%.2f"%pmax),"classid":max_index,"index":0,"objnum":0,"objname":objname}
             self.classesArr.append(respList)
+            time.sleep(0.01)
             return True
         except Exception as e:
             print(e)
@@ -213,4 +250,152 @@ class ImageClassification():
         gc.collect()
 
 
+ #  _______    _____    _____   ____    _  _     ______   ___    _____ 
+ # |__   __|  / ____|  / ____| |___ \  | || |   |____  | |__ \  | ____|
+ #    | |    | |      | (___     __) | | || |_      / /     ) | | |__  
+ #    | |    | |       \___ \   |__ <  |__   _|    / /     / /  |___ \ 
+ #    | |    | |____   ____) |  ___) |    | |     / /     / /_   ___) |
+ #    |_|     \_____| |_____/  |____/     |_|    /_/     |____| |____/ 
+
+_COMMAND_BIT = const(0x80)
+_REGISTER_ENABLE = const(0x00)
+_REGISTER_ATIME = const(0x01)
+_REGISTER_AILT = const(0x04)
+_REGISTER_AIHT = const(0x06)
+_REGISTER_ID = const(0x12)
+_REGISTER_APERS = const(0x0c)
+_REGISTER_CONTROL = const(0x0f)
+_REGISTER_SENSORID = const(0x12)
+_REGISTER_STATUS = const(0x13)
+_REGISTER_CDATA = const(0x14)
+_REGISTER_RDATA = const(0x16)
+_REGISTER_GDATA = const(0x18)
+_REGISTER_BDATA = const(0x1a)
+_ENABLE_AIEN = const(0x10)
+_ENABLE_WEN = const(0x08)
+_ENABLE_AEN = const(0x02)
+_ENABLE_PON = const(0x01)
+_GAINS = (1, 4, 16, 60)
+_CYCLES = (0, 1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60)
+
+
+class TCS34725:
+   def __init__(self, i2c, address=0x29):
+       self.i2c = i2c
+       self.address = address
+       self._active = False
+       self.integration_time(2.4)
+       sensor_id = self.sensor_id()
+       if sensor_id not in (0x44, 0x10):
+           #print(sensor_id)
+           raise RuntimeError("wrong sensor id 0x{:x}".format(sensor_id))
+
+   def _register8(self, register, value=None):
+       register |= _COMMAND_BIT
+       if value is None:
+           return self.i2c.readfrom_mem(self.address, register, 1)[0]
+       data = ustruct.pack('<B', value)
+       self.i2c.writeto_mem(self.address, register, data)
+
+   def _register16(self, register, value=None):
+       register |= _COMMAND_BIT
+       if value is None:
+           data = self.i2c.readfrom_mem(self.address, register, 2)
+           return ustruct.unpack('<H', data)[0]
+       data = ustruct.pack('<H', value)
+       self.i2c.writeto_mem(self.address, register, data)
+
+   def active(self, value=None):
+       if value is None:
+           return self._active
+       value = bool(value)
+       if self._active == value:
+           return
+       self._active = value
+       enable = self._register8(_REGISTER_ENABLE)
+       if value:
+           self._register8(_REGISTER_ENABLE, enable | _ENABLE_PON)
+           time.sleep_ms(3)
+           self._register8(_REGISTER_ENABLE,
+               enable | _ENABLE_PON | _ENABLE_AEN)
+       else:
+           self._register8(_REGISTER_ENABLE,
+               enable & ~(_ENABLE_PON | _ENABLE_AEN))
+
+   def sensor_id(self):
+       return self._register8(_REGISTER_SENSORID)
+
+   def integration_time(self, value=None):
+       if value is None:
+           return self._integration_time
+       value = min(614.4, max(2.4, value))
+       cycles = int(value / 2.4)
+       self._integration_time = cycles * 2.4
+       return self._register8(_REGISTER_ATIME, 256 - cycles)
+
+   def gain(self, value):
+       if value is None:
+           return _GAINS[self._register8(_REGISTER_CONTROL)]
+       if value not in _GAINS:
+           raise ValueError("gain must be 1, 4, 16 or 60")
+       return self._register8(_REGISTER_CONTROL, _GAINS.index(value))
+
+   def _valid(self):
+       return bool(self._register8(_REGISTER_STATUS) & 0x01)
+
+   def read(self, raw=False):
+       was_active = self.active()
+       self.active(True)
+       while not self._valid():
+           time.sleep_ms(int(self._integration_time + 0.9))
+       data = tuple(self._register16(register) for register in (
+           _REGISTER_RDATA,
+           _REGISTER_GDATA,
+           _REGISTER_BDATA,
+           _REGISTER_CDATA,
+       ))
+       self.active(was_active)
+       if raw:
+           return data
+       return self._temperature_and_lux(data)
+
+   def _temperature_and_lux(self, data):
+       r, g, b, c = data
+       x = -0.14282 * r + 1.54924 * g + -0.95641 * b
+       y = -0.32466 * r + 1.57837 * g + -0.73191 * b
+       z = -0.68202 * r + 0.77073 * g +  0.56332 * b
+       d = x + y + z
+       n = (x / d - 0.3320) / (0.1858 - y / d)
+       cct = 449.0 * n**3 + 3525.0 * n**2 + 6823.3 * n + 5520.33
+       return cct, y
+
+   def threshold(self, cycles=None, min_value=None, max_value=None):
+       if cycles is None and min_value is None and max_value is None:
+           min_value = self._register16(_REGISTER_AILT)
+           max_value = self._register16(_REGISTER_AILT)
+           if self._register8(_REGISTER_ENABLE) & _ENABLE_AIEN:
+               cycles = _CYCLES[self._register8(_REGISTER_APERS) & 0x0f]
+           else:
+               cycles = -1
+           return cycles, min_value, max_value
+       if min_value is not None:
+           self._register16(_REGISTER_AILT, min_value)
+       if max_value is not None:
+           self._register16(_REGISTER_AIHT, max_value)
+       if cycles is not None:
+           enable = self._register8(_REGISTER_ENABLE)
+           if cycles == -1:
+               self._register8(_REGISTER_ENABLE, enable & ~(_ENABLE_AIEN))
+           else:
+               self._register8(_REGISTER_ENABLE, enable | _ENABLE_AIEN)
+               if cycles not in _CYCLES:
+                   raise ValueError("invalid persistence cycles")
+               self._register8(_REGISTER_APERS, _CYCLES.index(cycles))
+
+   def interrupt(self, value=None):
+       if value is None:
+           return bool(self._register8(_REGISTER_STATUS) & _ENABLE_AIEN)
+       if value:
+           raise ValueError("interrupt can only be cleared")
+       self.i2c.writeto(self.address, b'\xe6')
 

@@ -1,5 +1,5 @@
 import KPU as kpu
-import machine , ubinascii , os , time , gc
+import machine , ubinascii , os , time , gc , sensor
 from microWebCli import MicroWebCli
 
 class visionService:
@@ -46,7 +46,7 @@ class visionService:
             self.fileSize = self.fileSize + visionService.Filename(self.boundary,i).length()
         return self.fileSize
 
-    def fileUpload(self,dsname,shared,files):
+    def fileUpload(self,dsname,shared,files,cb=None):
         self.fileSize = self.countFilesSize(files)
         boundary = self.boundary
         shared_field = visionService.Field(boundary,'shared',shared)
@@ -59,17 +59,21 @@ class visionService:
             print("uploading...total size:",bodyLen)
             wCli._write(shared_field.data())
             wCli._write(dsname_field.data())
+            cntUpload = 0
+            cntLen = len(files)
             for i in files:
+                cntUpload = cntUpload + 1
                 print("uploading...file:",i)
                 _file = visionService.Filename(boundary,i)
                 wCli._write(_file.data())
                 _file.destroy()
+                if not cb == None:
+                    cb(cntUpload,cntLen)
             wCli._write(bodyEnd)
             print("write done.")
             return wCli.GetResponse().IsSuccess()
         finally:
             wCli.Close()
-
 
 class MiniHttp:
     def readline(self):
@@ -176,7 +180,6 @@ class MiniHttp:
             raise
         return (status, reason, response)
 
-
 class mcar:
     ready = False
     def init():
@@ -231,7 +234,6 @@ class mcar:
         else:
             mcar.rightDirection.value(1)
             mcar.rightWheel.duty(100+val)
-
 
 class ColorObject:
     def findMax(img, threadshold, areaLimit=100, drawRectangle=True , drawPosition=False):
@@ -297,40 +299,85 @@ class FaceDetect:
                                                                                              
 class CodeScanner :
     def findQRCode(img):
+        from _board import webai
+        px = 0
+        py = -15
+        lt_x = 20
+        lt_y = 20
         payload = ""
-        find = False
+        while True:
+            webai.camera.set_hmirror(True)
+            webai.img = webai.camera.snapshot()
+            payload = CodeScanner.scanQRCode(webai.img)
+            webai.camera.set_hmirror(False)
+            webai.img = webai.camera.snapshot()
+            if payload=='':
+                payload = CodeScanner.scanQRCode(webai.img)
+            if not payload=='':
+                break
+            #左上
+            webai.img.draw_line(48+lt_x+px,8+lt_y+py,98+lt_x+px,8+lt_y+py,0xFFFF,2)
+            webai.img.draw_line(48+lt_x+px,8+lt_y+py,48+lt_x+px,48+lt_y+py,0xFFFF,2)
+            #右上
+            webai.img.draw_line(222-lt_x+px,8+lt_y+py,272-lt_x+px,8+lt_y+py,0xFFFF,2)
+            webai.img.draw_line(272-lt_x+px,8+lt_y+py,272-lt_x+px,48+lt_y+py,0xFFFF,2)
+            #左下
+            webai.img.draw_line(48+lt_x+px,232-lt_y+py,98+lt_x+px,232-lt_y+py,0xFFFF,2)
+            webai.img.draw_line(48+lt_x+px,192-lt_y+py,48+lt_x+px,232-lt_y+py,0xFFFF,2)
+            #右下
+            webai.img.draw_line(222-lt_x+px,232-lt_y+py,272-lt_x+px,232-lt_y+py,0xFFFF,2)
+            webai.img.draw_line(272-lt_x+px,192-lt_y+py,272-lt_x+px,232-lt_y+py,0xFFFF,2)
+            webai.img.draw_string(90,208,"Scan QRCode",scale=2,x_spacing=2)
+            webai.show(img=webai.img)
+        webai.img = None
+        gc.collect()
+        return payload
+
+    def scanQRCode(img):
+        payload = ""
         for code in img.find_qrcodes():
             payload = code.payload()
-            find = True
             break
-        if not find:
-            img.replace(img, hmirror=True)
-            for code in img.find_qrcodes():
-                payload = code.payload()
-                find = True
-                break
-            img.replace(img, hmirror=True)
+        return payload
+
+    def scanBarCode(img):
+        payload = ""
+        for code in img.find_barcodes():
+            payload = code.payload()
+            break
         return payload
 
     def findBarCode(img):
+        from _board import webai
+        px = 0
+        py = -15
+        lt_x = 0
+        lt_y = 60
         payload = ""
-        find = False
-        for code in img.find_barcodes():
-            payload = code.payload()
-            find = True
-            break
-        if not find:
-            img.replace(img, hmirror=True)
-            for code in img.find_barcodes():
-                payload = code.payload()
-                find = True
+        while True:
+            webai.camera.set_hmirror(True)
+            webai.img = webai.camera.snapshot()
+            payload = CodeScanner.scanBarCode(webai.img)
+            webai.camera.set_hmirror(False)
+            webai.img = webai.camera.snapshot()
+            if payload=='':
+                payload = CodeScanner.scanBarCode(webai.img)
+            if not payload=='':
                 break
-            img.replace(img, hmirror=True)
-        if not find:
-            img.replace(img, vmirror=True)
-            for code in img.find_barcodes():
-                payload = code.payload()
-                find = True
-                break
-            img.replace(img, vmirror=True)
-        return payload
+            #左上
+            webai.img.draw_line(48+lt_x+px,8+lt_y+py,78+lt_x+px,8+lt_y+py,0xFFFF,2)
+            webai.img.draw_line(48+lt_x+px,8+lt_y+py,48+lt_x+px,48+lt_y+py,0xFFFF,2)
+            #右上
+            webai.img.draw_line(242-lt_x+px,8+lt_y+py,272-lt_x+px,8+lt_y+py,0xFFFF,2)
+            webai.img.draw_line(272-lt_x+px,8+lt_y+py,272-lt_x+px,48+lt_y+py,0xFFFF,2)
+            #左下
+            webai.img.draw_line(48+lt_x+px,232-lt_y+py,78+lt_x+px,232-lt_y+py,0xFFFF,2)
+            webai.img.draw_line(48+lt_x+px,192-lt_y+py,48+lt_x+px,232-lt_y+py,0xFFFF,2)
+            #右下
+            webai.img.draw_line(242-lt_x+px,232-lt_y+py,272-lt_x+px,232-lt_y+py,0xFFFF,2)
+            webai.img.draw_line(272-lt_x+px,192-lt_y+py,272-lt_x+px,232-lt_y+py,0xFFFF,2)
+            webai.img.draw_string(80,208,"Scan BarCode",scale=2,x_spacing=2)
+            webai.show(img=webai.img)
+        webai.img = None
+        gc.collect()
+        return payloa
