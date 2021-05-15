@@ -57,7 +57,7 @@ __      _____| |__   __| |_   _ _ _ __   ___
 Official Site : https://webduino.io
 [__20210510__]
 '''
-time.sleep(0.5)
+#time.sleep(0.5)
 sys.path.append('')
 sys.path.append('.')
 
@@ -78,7 +78,7 @@ del i
 
 print("<<<< [Start] >>>>")
 lcd.init()
-time.sleep(0.5)
+#time.sleep(0.5)
 
 lcd.clear(0xFFFF)
 
@@ -104,7 +104,7 @@ if resetPin.value()==0:
     import machine
     machine.reset()
 
-time.sleep(0.1)
+#time.sleep(0.1)
 #fm.unregister(7)
 img = None
 resetPin = None

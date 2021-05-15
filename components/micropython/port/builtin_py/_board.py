@@ -425,7 +425,7 @@ class esp8285:
             gc.collect()
             while esp8285.uart_cb.any():
                 myLine = uarObj.readline()
-                #print("mqtt debug:",myLine)
+                print("[mqttCallback]:",myLine)
                 if(myLine==None):
                     break
                 myLine = myLine.decode().strip()
@@ -791,7 +791,7 @@ class fw:
     def set(name='min'):
         import machine,time
         from Maix import utils
-        time.sleep(0.25)
+        #time.sleep(0.25)
         if name == 'min' or name == 'mini':
             utils.flash_write(fw.kboot_fw_flag,bytearray([1]))
             if fw.now() != 'min':
@@ -1297,43 +1297,7 @@ class webai:
 
     def reset():
         print(" reset by machine !!!")
-        time.sleep(2)
-        machine.reset()
-
-    def reset3():
-        os.sync()
-        gc.collect()
-        print(" stop by WDT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ")
-        esp8285.wifiStatusPin.disirq()
-        print(" stop esp8285.uart ")
-        esp8285.uart.deinit()
-        print(" stop esp8285.uart_cb ")
-        esp8285.uart_cb.deinit()
-        fm.register(20, fm.fpioa.GPIO0, force=True)
-        reset = GPIO(GPIO.GPIO0, GPIO.OUT)
-        reset.value(0)
-        time.sleep(0.01)
-        reset.value(1)
-        from machine import WDT
-        def on_wdt(self):
-            pass
-            #print(self.context(), self)
-            #self.feed()
-        wdt1 = WDT(id=0, timeout=10, callback=on_wdt, context={})
-
-
-    def reset2():
-        print(" stop esp8285.uart ")
-        esp8285.uart.deinit()
-        print(" stop esp8285.uart_cb ")
-        esp8285.uart_cb.deinit()
-        time.sleep(2)
-        fm.register(20, fm.fpioa.GPIO0, force=True)
-        reset = GPIO(GPIO.GPIO0, GPIO.OUT)
-        reset.value(0)
-        os.sync()
-        gc.collect()
-        time.sleep(2)
+        #time.sleep(2)
         machine.reset()
 
     def resetESP8285():
