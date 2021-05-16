@@ -642,7 +642,8 @@ class btn:
     def __init__(self,name,pin,fpioaGPIO,gpio):
         btn.UP = 0
         btn.DOWN = 1
-        btn.LONG_PRESS = 2
+        btn.CLICK = 2
+        btn.LONG_PRESS = 3
         if not hasattr(btn,'btnStateQueue'):
             btn.btnStateQueue = {}
         fm.fpioa.set_function(pin, fpioaGPIO)
@@ -654,41 +655,46 @@ class btn:
         self.btn = GPIO(gpio, GPIO.IN)
         self.btn.irq(btn.process,GPIO.IRQ_BOTH)
         self.btnState = btn.DOWN if(self.btn.value()==0) else btn.UP
-        self.irq_process = False
-        self.lastProcessTime = time.ticks_ms()
+        self.longPressCheck = False
+        self.lastPin = {'value':self.btn.value(),'time':0}
         _thread.start_new_thread(self.run,())
 
-    def process(pinInfo):
-        btn.btnStateQueue[str(pinInfo)].append(pinInfo)
+    def process(pinObj):
+        info = {'value':pinObj.value(),'time':time.ticks_ms()}
+        btn.btnStateQueue[str(pinObj)].append(info)
 
     def run(self):
         while True:
             stateList = btn.btnStateQueue[self.pin]
             if len(stateList) > 0:
-                nowTime = time.ticks_ms()
-                if (nowTime - self.lastProcessTime) > 10:
-                    self.lastProcessTime = nowTime
-                    val = stateList[0].value()
-                    for evt in self.eventHandler:
-                        if(val==0):
-                            evt(self.name,1)
-                        else:
-                            evt(self.name,0)
+                pin = stateList[0]
                 del stateList[0]
+                if pin['value'] == self.lastPin['value']:
+                    continue #skip bounce rate
+                pressTime = pin['time'] - self.lastPin['time']
+
+                if pin['value'] == 0: # press
+                    for evt in self.eventHandler:
+                        evt(self.name, btn.DOWN)                
+                    self.longPressCheck = True
+                    self.longPressTime = pin['time']
+
+                if pin['value'] == 1 and self.lastPin['time']!=0 : # up
+                    self.longPressCheck = False
+                    for evt in self.eventHandler:
+                        evt(self.name, btn.CLICK)
+                self.lastPin = pin
+
+            if self.longPressCheck and self.btn.value()==0 and (time.ticks_ms() - self.longPressTime)>500:
+                for evt in self.eventHandler:
+                    evt(self.name, btn.LONG_PRESS)
+                self.longPressCheck = False
+                self.lastPin['time'] = 0
             time.sleep(0.001)
 
     def state(self):
         self.btnState = btn.DOWN if(self.btn.value()==0) else btn.UP
         return self.btnState
-
-    def longPressEvent(self):
-        self.idx = self.idx + 1
-        nowIdx = self.idx
-        time.sleep(1)
-        if(self.btn.value() == 0 and nowIdx == self.idx):
-            # create thread to process
-            for evt in self.eventHandler:
-                _thread.start_new_thread(evt,[self.name,btn.LONG_PRESS])
 
     def addBtnEventListener(self,eventFunc):
         self.eventHandler.append(eventFunc)
@@ -700,8 +706,6 @@ class btn:
             if(evt == eventFunc):
                 findIdx = idx
                 break
-        if(findIdx >=0):
-            del self.eventHandler[findIdx]
 
 class mqtt:
 
@@ -757,6 +761,13 @@ class fs:
                 os.remove(filename)
         else:
             os.remove(file)
+
+    def exists(file):
+        try:
+            fs.size(file)
+            return True
+        except:
+            return False
 
 class mem:
     def info():
@@ -1011,6 +1022,136 @@ class cmdProcess:
     def _TAKEPIC_YOLO(jsonArray):
         print("_TAKEPIC_YOLO>",jsonArray)
 
+
+    def _TAKEPIC_MOBILENET(strObj):
+        jsonObj = ujson.loads(strObj)
+        files = []
+        completed = False
+        dsname = jsonObj['dsname']
+        count = int(jsonObj['count'])
+        url = jsonObj['url']
+        url = url.replace('https://','http://')
+        hashKey = jsonObj['hashKey']
+        flip = int(jsonObj['flip'])
+        webai.initCamera(flip)
+        self_taken = flip
+        print("upload:",url)
+        webai.initCamera(flip) #0:gigo , 1:webai
+        mx = 48
+        my = 10
+        idx = 1
+        rType = 0
+        jpg = None
+        snapshot = False
+        rectType = [ [mx+0,my+0,224,224],
+                     [mx+30,my+30,164,164],
+                     [mx+40,my+40,144,144],
+                     [mx+50,my+50,124,124],
+                     [mx+60,my+60,104,104]]
+
+        def upload():
+            if not webai.esp8285.at('AT')[1].decode()[:2] == 'OK':
+                print("連線異常！嘗試重新連線...")
+                webai.esp8285.init(115200*10)
+                webai.state()
+            else:
+                print("wifi checked OK !!!!")
+            webai.draw_string(110,90,"上傳中...   ",scale=2)
+            try:
+                def cb(now,all):
+                    #webai.draw_string(110,80,"上傳中... ",scale=2,img=webai.img,lcd_show=False)
+                    webai.img.clear()
+                    webai.draw_string(110,80,"上傳中... ",scale=2,img=webai.img,lcd_show=False)
+                    webai.draw_string(105,130,"("+str(now)+"/"+str(all)+")",scale=2,img=webai.img)
+                    print(now,'/',all)
+                state = webai.cloud.uploadPic(url,hashKey,dsname,files,cb)
+                time.sleep(0.001)
+                gc.collect()
+                for i in files:
+                    webai.fs.rm(i)
+                    print("delete ",i)
+                    os.sync()
+                try:
+                    webai.fs.rm('main.py')
+                except:
+                    pass
+                os.sync()
+                webai.img = image.Image()
+                webai.draw_string(110,80,"上傳完成  ",scale=2,img=webai.img,lcd_show=False)
+                webai.draw_string(95,130,"請重新開機  ",scale=2,img=webai.img)
+            except Exception as ee:
+                print(">>>>>>>",ee)
+                time.sleep(0.001)
+                gc.collect()
+                webai.img = image.Image()
+                webai.draw_string(110,80,"上傳失敗  ",scale=2,img=webai.img,lcd_show=False)
+                webai.draw_string(95,130,"請重新操作  ",scale=2,img=webai.img)
+            finally:
+                while True:
+                    time.sleep(1)
+
+
+        def onclick(name,state):
+            nonlocal idx,count,completed,snapshot,rectType,rType
+            if completed:
+                return
+            if(name=='btnL' and state == 1):
+                snapshot = True
+                if(idx == count):
+                    completed = True
+            if name=='btnR' and state == 1:
+                rType = (rType + 1) % len(rectType)
+
+        webai.addBtnListener(onclick)
+        clock = time.clock()
+
+        while(True):
+            clock.tick()
+            time.sleep(0.001)
+            rx = rectType[rType][0]
+            ry = rectType[rType][1]
+            rw = rectType[rType][2]
+            rh = rectType[rType][3]
+            webai.img = webai.snapshot()
+            snap = "0"+str(idx)+" " if idx < 10 else str(idx)+" "
+            end = "0"+str(count)+" " if count < 10 else str(count)+" "
+            jpg = webai.img.copy(roi=(48,16,48+224,16+224))
+            webai.draw_string(25,5,snap,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
+            webai.draw_string(35,35,"/",img=webai.img,scale=2,x_spacing=2,lcd_show=False)
+            webai.draw_string(25,65,end,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
+            filename = "take"+str(idx)+"-"+str(rx)+"_"+str(ry)+"_"+str(rw)+"_"+str(rh)+".jpg"
+            if snapshot:
+                startTime = time.ticks_ms()
+                webai.img.draw_string(90,215,"save...",scale=2)
+                webai.img.draw_rectangle(rx,ry,rw,rh,(255,100,100),2,False)
+                webai.show(img=webai.img)
+                webai.img = None
+                gc.collect()
+                jpg.save('/flash/'+filename)
+                print("save:",filename)
+                files.append(filename)
+                jpg = None
+                gc.collect()
+                webai.img = webai.snapshot()
+                webai.img.draw_rectangle(rx,ry,rw,rh,(255,100,100),2,False)
+                webai.img.draw_string(90,215,"save...",scale=2)
+                webai.img.draw_string(190,215,"    OK      ",scale=2)
+                webai.show(img=webai.img)
+                time.sleep(0.1)
+                gc.collect()
+                idx = idx + 1
+                snapshot = False
+            if completed:
+                break
+            jpg = None
+            gc.collect()
+            webai.img.draw_rectangle(rx,ry,rw,rh,(255,255,255),2,False)
+            webai.img.draw_cross(320//2,240//2,size=10,thickness=2)
+            #webai.img.draw_string(10,10,"fps:"+str(clock.fps()))
+            webai.show(img=webai.img)
+
+        upload()
+
     '''
      _TAKEPIC_MOBILENET> 
       {"dsname":"qq",
@@ -1019,7 +1160,7 @@ class cmdProcess:
        "hashKey": "286d63a42baaf574d46277247b5e978d", 
        "flip": "1"}
     '''
-    def _TAKEPIC_MOBILENET(strObj):
+    def _TAKEPIC_MOBILENET_old(strObj):
         #webai.esp8285.init(115200*5)
         jsonObj = ujson.loads(strObj)
         cnt = 0
@@ -1031,7 +1172,7 @@ class cmdProcess:
         url = url.replace('https://','http://')
         hashKey = jsonObj['hashKey']
         flip = int(jsonObj['flip'])
-        webai.camera.set_vflip(flip==1) #鏡頭上下翻轉
+        webai.initCamera(flip==1)
         self_taken = flip==1
         print("upload:",url)
 
@@ -1272,8 +1413,10 @@ class webai:
         print("")
 
     def draw_string(x, y, text, img=None, color=(255,255,255), scale=5,x_spacing=None, mono_space=False,lcd_show=True):
+        clear = False
         if webai.img == None:
             webai.img = image.Image()
+            clear = True
         if x_spacing==None:
             x_spacing = 8*scale
         image.font_load(image.UTF8, 16, 16, 0x980000)
@@ -1281,7 +1424,8 @@ class webai:
         image.font_free()
         if lcd_show:
             webai.lcd.display(webai.img)
-        webai.img = None
+        if clear:
+            webai.img = None
 
     def logo():
         try:
@@ -1308,10 +1452,10 @@ class webai:
         if(esp8285.wifiConnect == False):
             esp8285.connect(ssid,pwd)
 
-    def initCamera():
+    def initCamera(flip):
         if not webai.init_camera_ok:
             webai.camera.reset()
-            webai.camera.set_vflip(1) #鏡頭上下翻轉
+            webai.camera.set_vflip(flip) #鏡頭上下翻轉
             webai.camera.set_pixformat(webai.camera.RGB565)
             webai.camera.set_framesize(webai.camera.QVGA) # 320x240
             webai.camera.skip_frames(30)
@@ -1332,7 +1476,7 @@ class webai:
     def snapshot():
         if not webai.init_camera_ok:
             print("init camera...")
-            webai.initCamera()
+            webai.initCamera(True)
             print("init camera done.")        
         webai.img = None
         time.sleep(0.001)
