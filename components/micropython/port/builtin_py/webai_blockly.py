@@ -2,13 +2,37 @@ print('exec by /filesystem/webai_blockly.py')
 
 
 from _board import webai
+from Maix import GPIO
+from board import board_info
+from fpioa_manager import fm
 import image,gc,sys,time,_thread,os
+from machine import UART,Timer,PWM
 
+fpioaMapGPIO={
+'0':[board_info.P0,fm.fpioa.GPIOHS0,GPIO.GPIOHS0],
+'1':[board_info.P1,fm.fpioa.GPIOHS1,GPIO.GPIOHS1],
+'2':[board_info.P2,fm.fpioa.GPIOHS2,GPIO.GPIOHS2],
+'3':[board_info.P3,fm.fpioa.GPIOHS3,GPIO.GPIOHS3],
+'5':[board_info.P5,fm.fpioa.GPIOHS5,GPIO.GPIOHS5],
+'6':[board_info.P6,fm.fpioa.GPIOHS6,GPIO.GPIOHS6],
+'7':[board_info.P7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7],
+'8':[board_info.P8,fm.fpioa.GPIOHS8,GPIO.GPIOHS8],
+'9':[board_info.P9,fm.fpioa.GPIOHS9,GPIO.GPIOHS9],
+'10':[board_info.P10,fm.fpioa.GPIOHS10,GPIO.GPIOHS10],
+'11':[board_info.P11,fm.fpioa.GPIOHS11,GPIO.GPIOHS11],
+'12':[board_info.P12,fm.fpioa.GPIOHS12,GPIO.GPIOHS12],
+'13':[board_info.P13,fm.fpioa.GPIOHS13,GPIO.GPIOHS13],
+'14':[board_info.P14,fm.fpioa.GPIOHS14,GPIO.GPIOHS14],
+'15':[board_info.P15,fm.fpioa.GPIOHS15,GPIO.GPIOHS15],
+'16':[board_info.P16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16],
+'19':[board_info.P19,fm.fpioa.GPIO0,GPIO.GPIO0],
+'20':[board_info.P20,fm.fpioa.GPIO1,GPIO.GPIO1]}
+
+USER_PWM_LIST = []
 
 SYSTEM_BTN_L = webai.btnL.btn
 SYSTEM_BTN_R = webai.btnR.btn
 SYSTEM_MQTT_TOPIC = webai.esp8285.subQueue
-
 SYSTEM_ALLOCATE_LOCK = _thread.allocate_lock()
 
 class Mqtt:
@@ -104,6 +128,69 @@ class Speaker:
 
     def setVolume(self,vol):
         webai.speaker.setVolume(vol)
+
+
+class Io:
+    PWMPINUSE=[]
+    PINUSE=[]
+    PINIO=[]
+    def io(PIN):
+        PIN=fpioaMapGPIO[PIN]
+        if PIN in __class__.PINUSE:
+            return __class__.PINIO[__class__.PINUSE.index(PIN)]
+        else:
+            fm.register(PIN[0], PIN[1],force=True)
+            IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
+            __class__.PINUSE.append(PIN)
+            __class__.PINIO.append(IO)
+            return IO
+    def read(PIN):
+        PIN=fpioaMapGPIO[PIN]
+        if PIN in __class__.PINUSE:
+            return __class__.PINIO[__class__.PINUSE.index(PIN)].value()
+        else:
+            fm.register(PIN[0], PIN[1],force=True)
+            IO=GPIO(PIN[2],GPIO.IN,GPIO.PULL_UP)
+            __class__.PINUSE.append(PIN)
+            __class__.PINIO.append(IO)
+            return IO.value()
+    def write(PIN,PWMMODE=False,PWM_FREQ=50,VALUE=0):
+        if PWMMODE:
+            USER_PWM_LIST_COUNT=len(USER_PWM_LIST)
+            if USER_PWM_LIST_COUNT<8:
+                if USER_PWM_LIST_COUNT<4:
+                    BLOCKLY_SYSTEM_TIMER=0
+                else:
+                    BLOCKLY_SYSTEM_TIMER=1
+                PIN=fpioaMapGPIO[PIN]
+                if PIN in __class__.PWMPINUSE:
+                    #print("old",__class__.PWMPINUSE.index(PIN))
+                    #print(__class__.PWMPINUSE)
+                    USER_PWM_LIST[__class__.PWMPINUSE.index(PIN)].duty(VALUE)
+                else:
+                    #print("new")
+                    TIMER=Timer(BLOCKLY_SYSTEM_TIMER,USER_PWM_LIST_COUNT%4, mode=Timer.MODE_PWM)
+                    Io_Blockly_PWM = PWM(TIMER,freq=PWM_FREQ, duty=VALUE, pin=PIN[0])
+                    __class__.PWMPINUSE.append(PIN)
+                    USER_PWM_LIST.append(Io_Blockly_PWM)
+                #print("USER_PWM_LIST_COUNT:"+str(USER_PWM_LIST_COUNT))
+            else:
+                raise Exception("Io_Blockly error")
+        else:
+            PIN=fpioaMapGPIO[PIN]
+            if PIN in __class__.PINUSE:
+                #print("old")
+                __class__.PINIO[__class__.PINUSE.index(PIN)].value(VALUE)
+            else:
+                #print("new")
+                fm.register(PIN[0], PIN[1],force=True)
+                IO=GPIO(PIN[2],GPIO.OUT)
+                IO.value(VALUE)
+                __class__.PINUSE.append(PIN)
+                __class__.PINIO.append(IO)
+
+        
+
 
 
 class ObjectTracking():
