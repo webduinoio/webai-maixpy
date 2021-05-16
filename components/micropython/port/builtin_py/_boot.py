@@ -55,7 +55,7 @@ __      _____| |__   __| |_   _ _ _ __   ___
   \_/\_/ \___|_.__/ \__,_|\__,_|_|_| |_|\___/ 
                                               
 Official Site : https://webduino.io
-[__20210510__]
+[__20210516__]
 '''
 #time.sleep(0.5)
 sys.path.append('')
@@ -86,6 +86,15 @@ lcd.clear(0xFFFF)
 img = image.Image()
 img.draw_string(80,100,"Initialize...",scale=2,x_spacing=4)
 lcd.display(img)
+
+try:
+    os.stat('main.py')[6]
+except:
+    try:
+        f = open('/flash/main.py','w')
+        f.write(main_py)
+    finally:
+        f.close()
 
 fm.fpioa.set_function(7, fm.fpioa.GPIO7)
 resetPin = GPIO(GPIO.GPIO7, GPIO.IN)
