@@ -105,17 +105,23 @@ class cfg:
         return img
 
     def saveBlob(barray):
-        blobLength = len(barray)
-        hi = blobLength // 255
-        lo = blobLength % 255
-        utils.flash_write(cfg.blobData,bytearray([hi,lo]))
-        #write data
-        utils.flash_write(cfg.blobData+2,barray)
+        cfg.saveBlobAddr(cfg.blobData, barray)
 
     def loadBlob():
-        blobLen = utils.flash_read(cfg.blobData,2)
+        cfg.loadBlobAddr(cfg.blobData)
+
+    def saveBlobAddr(addr, barray):
+        blobLength = len(barray)
+        hi = blobLength // 256
+        lo = blobLength % 256
+        utils.flash_write(addr,bytearray([hi,lo]))
+        #write data
+        utils.flash_write(addr+2,barray)
+
+    def loadBlobAddr(addr):
+        blobLen = utils.flash_read(addr,2)
         blobLen = blobLen[0]*0x100 + blobLen[1]
-        return utils.flash_read(cfg.blobData+2,blobLen)
+        return utils.flash_read(addr+2,blobLen)
 
 class cloud:
     container = 'user'
@@ -1202,6 +1208,104 @@ class QRCodeRunner:
         gc.collect()
         return code
 
+class ASR:
+    model_address = 0x1329C
+    model_size = 5256 + 2 # bytes
+    dtw_threshold = 350
+    evtList = [None]*10
+    recording = False
+
+    def init(sample_rate=16000):
+        import time, _thread
+        from Maix import GPIO, I2S
+        from fpioa_manager import fm
+        from speech_recognizer import isolated_word
+
+        fm.register(12, fm.fpioa.I2S0_IN_D0, force=True)
+        fm.register(13, fm.fpioa.I2S0_WS, force=True)
+        fm.register(14, fm.fpioa.I2S0_SCLK, force=True)
+        rx = I2S(I2S.DEVICE_0)
+        rx.channel_config(rx.CHANNEL_0, rx.RECEIVER,
+                          align_mode=I2S.STANDARD_MODE)
+        rx.set_sample_rate(sample_rate)
+
+        ASR.sr = isolated_word(dmac=2, i2s=I2S.DEVICE_0, size=10,
+                                            shift=1)  # maix bit set shift=1
+        ASR.sr.set_threshold(0, 0, 10000)
+        ASR.srList = [None]*10
+        ASR.load()
+
+        _thread.start_new_thread(ASR.recognize, ())
+
+    def set_dtw_threshold(dtw_threshold=350):
+        ASR.dtw_threshold = dtw_threshold
+
+    def record(index, name):
+        # 0 Init
+        # 1 Idle
+        # 2 Ready
+        # 3 MaybeNoise
+        # 4 Restrain
+        # 5 Speak
+        # 6 Done
+        ASR.recording = True
+        while True:
+            if ASR.sr.Done == ASR.sr.record(index):
+                print('save', index, 'ok')
+                ASR.srList[index] = ASR.sr.get(index)
+                ASR.save(index, name, ASR.srList[index])
+                ASR.recording = False
+                break
+            state = ASR.sr.state()
+            #if ASR.sr.Speak != state:
+                 #print('state', state)
+            time.sleep_ms(1)
+    def load():
+        ASR.srList = webai.cfg.get('asr')
+        print('load asr', ASR.srList)
+        if ASR.srList:
+            srListLen = len(ASR.srList)
+            for index in range(srListLen):
+                if ASR.srList[index]:
+                    try:
+                        frm_len = ASR.srList[index][1]
+                        frm_data = webai.cfg.loadBlobAddr(ASR.model_address + index * ASR.model_size)
+                        model = (frm_len, frm_data)
+                        print('frm_data len', len(frm_data))
+                        ASR.sr.set(index, model)
+                    except Exception as e:
+                        print('load', index, 'error', e)
+                        ASR.srList[index] = None
+
+        else:
+            print('asr key no exist')
+            ASR.srList = [None]*10
+
+    def save(index, name, model):
+        # model type: (frm_len, frm_data)
+        frm_len = model[0]
+        frm_data = model[1]
+        ASR.srList[index] = (name, frm_len)
+        webai.cfg.put('asr', ASR.srList)
+        webai.cfg.saveBlobAddr(ASR.model_address + index * ASR.model_size, frm_data)
+
+    def recognize():
+        while True:
+            if not ASR.recording:
+                if ASR.sr.Done == ASR.sr.recognize():
+                    result = ASR.sr.result()
+                    if result:
+                        model_index = result[0]
+                        dtw_threshold = result[1]
+                        #print('dtw threshold', dtw_threshold)
+                        callback = ASR.evtList[model_index]
+                        if callback and dtw_threshold < ASR.dtw_threshold:
+                            callback()
+            time.sleep_ms(1)
+
+    def addASRListener(index, callback=None): # registry callback
+        ASR.evtList[index] = callback
+
 class webai:
 
     def init(camera=True,speed=20):
@@ -1229,6 +1333,7 @@ class webai:
         webai.lcd = lcd
         webai.camera = sensor
         webai.speaker = speaker()
+        webai.asr = ASR
         webai.init_camera_ok = False
         if camera:
             print("init camera...")

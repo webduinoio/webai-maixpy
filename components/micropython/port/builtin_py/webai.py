@@ -1,5 +1,6 @@
 import KPU as kpu
 import machine , ubinascii , os , time , gc , sensor
+from modules import ws2812
 from microWebCli import MicroWebCli
 
 class visionService:
@@ -197,6 +198,7 @@ class mcar:
         rightTimer = Timer(Timer.TIMER0, Timer.CHANNEL1, mode=Timer.MODE_PWM)
         mcar.rightWheel = PWM(rightTimer, freq=500000, duty=0, pin=8)#p6
         mcar.leftWheel = PWM(leftTimer, freq=500000, duty=0, pin=10)#p8
+        mcar.ws2812 = ws2812(led_pin=22, led_num=8)
 
     def stop():
         mcar.move(0,0)
@@ -235,6 +237,14 @@ class mcar:
             mcar.rightDirection.value(1)
             mcar.rightWheel.duty(100+val)
 
+    def led_on(num=0, color=(0xff, 0xff, 0xff)):
+        mcar.ws2812.set_led(num, color)
+        mcar.ws2812.display()
+
+    def led_off():
+        for i in range(8):
+            mcar.ws2812.set_led(i)
+        mcar.ws2812.display()
 class ColorObject:
     def findMax(img, threadshold, areaLimit=100, drawRectangle=True , drawPosition=False):
         blobs = img.find_blobs([threadshold])
@@ -380,4 +390,4 @@ class CodeScanner :
             webai.show(img=webai.img)
         webai.img = None
         gc.collect()
-        return payloa
+        return payload
