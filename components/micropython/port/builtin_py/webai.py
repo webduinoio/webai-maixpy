@@ -298,14 +298,14 @@ class FaceDetect:
 #  ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝
                                                                                              
 class CodeScanner :
-    def findQRCode(img):
+    def findQRCode(img,loop=True):
         from _board import webai
         px = 0
         py = -15
         lt_x = 20
         lt_y = 20
         payload = ""
-        while True:
+        while loop:
             webai.camera.set_hmirror(True)
             webai.img = webai.camera.snapshot()
             payload = CodeScanner.scanQRCode(webai.img)
@@ -380,4 +380,4 @@ class CodeScanner :
             webai.show(img=webai.img)
         webai.img = None
         gc.collect()
-        return payloa
+        return payload

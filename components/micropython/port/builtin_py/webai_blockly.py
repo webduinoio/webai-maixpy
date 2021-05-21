@@ -1,11 +1,8 @@
-print('exec by /filesystem/webai_blockly.py')
-
-
 from _board import webai
 from Maix import GPIO
 from board import board_info
 from fpioa_manager import fm
-import image,gc,sys,time,_thread,os
+import image,gc,sys,time,_thread,os,ustruct
 from machine import UART,Timer,PWM
 
 fpioaMapGPIO={
@@ -50,9 +47,12 @@ class Lcd:
     def __init__(self):
         print("webai lcd init")
         webai.img = image.Image()
+        gc.collect()
 
     def clear(self):
         webai.lcd.clear()
+        if not webai.img == None:
+          webai.img.clear()
 
     def width(self):
         return webai.lcd.width()
