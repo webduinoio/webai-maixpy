@@ -1127,7 +1127,7 @@ class cmdProcess:
             webai.draw_string(25,5,snap,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
             webai.draw_string(35,35,"/",img=webai.img,scale=2,x_spacing=2,lcd_show=False)
             webai.draw_string(25,65,end,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
-            filename = "take"+str(idx)+"-"+str(rx)+"_"+str(ry)+"_"+str(rw)+"_"+str(rh)+".jpg"
+            filename = "take"+str(idx)+"-"+str(rx)+"_"+str(ry)+"_"+str(rw)+"_"+str(rh)+"_320_240.jpg"
             if snapshot:
                 startTime = time.ticks_ms()
                 webai.img.draw_string(90,215,"save...",scale=2)
