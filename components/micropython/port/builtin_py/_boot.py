@@ -1,5 +1,5 @@
 from fpioa_manager import fm
-from Maix import GPIO
+from Maix import GPIO,utils
 import os,sys,time,gc,lcd,image,_thread
 
 gc.enable()
@@ -219,6 +219,8 @@ fm.fpioa.set_function(7, fm.fpioa.GPIO7)
 resetPin = GPIO(GPIO.GPIO7, GPIO.IN)
 if resetPin.value()==0:
     lcd.clear(0x07E0)
+    # cfg reset flag
+    utils.flash_write(0x4000,bytearray([0,0]))
     try:
         f1 = open('/flash/main.py','w')
         f1.write(main_py)
