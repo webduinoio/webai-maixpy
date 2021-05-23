@@ -29,22 +29,24 @@ class visionService:
             time.sleep(0.001)
             gc.collect()
         def data(self):
-            with open(self.filename, 'rb') as f:
-                self.DATA = f.read()
+            from _board import webai
+            self.DATA = webai.imgCache.load(self.filename)
+            print("Filename data:",self.filename,':',len(self.DATA))
             return b''.join([self.boundary,self.name,self.CNT,self.CRLF,self.DATA,self.CRLF])
         def length(self):
-            return os.stat(self.filename)[6]+len(b''.join([self.boundary,self.name,self.CNT,self.CRLF,self.CRLF]))
-
+            from _board import webai
+            return webai.imgCache.files[self.filename]['size']+len(b''.join([self.boundary,self.name,self.CNT,self.CRLF,self.CRLF]))
 
     def __init__(self,url,hashkey):
         self.url = url+'?hashkey='+hashkey
         self.boundary = "webAI"+ubinascii.hexlify(machine.unique_id()[:14]).decode('ascii')
 
     def countFilesSize(self,files):
+        from _board import webai
         self.fileSize = 0
         for i in files:
             self.fileSize = self.fileSize + visionService.Filename(self.boundary,i).length()
-        return self.fileSize
+        return self.fileSize        
 
     def fileUpload(self,dsname,shared,files,cb=None):
         self.fileSize = self.countFilesSize(files)

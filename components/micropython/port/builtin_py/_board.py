@@ -14,6 +14,76 @@ import gc,uos,json,os,image,_thread,ubinascii
 
 _thread.stack_size(16*1024)
 
+# 0x900000 ~ 0x97FFFF  512KB 存放快取圖片，減少檔案系統使用
+class imgCache:
+    def init():
+        if not hasattr(__class__,'initialize'):
+            if webai.cfg.get('cache') == None:
+                webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0x900000}})
+            imgCache.cache = webai.cfg.get('cache')
+            imgCache.meta = imgCache.cache['meta']
+            imgCache.files = imgCache.cache['files']
+            __class__.initialize = True
+
+    def save(filename,img,quality=80):
+        imgCache.init()
+        idx = imgCache.meta['idx']
+        fileExists = filename in imgCache.files
+
+        if fileExists:
+            return False
+        else:
+            idx = idx + 1
+        jpg = img.compress(quality)
+        jpg = jpg.to_bytes()
+        size = len(jpg)
+        imgCache.meta['idx'] = idx
+        imgCache.meta['filename'] = filename
+        info = {
+            'idx': idx,
+            'addr': imgCache.meta['addr'],
+            'size':size
+        }
+        imgCache.files[filename] = info
+        #write data
+        utils.flash_write(imgCache.meta['addr'],jpg)
+        if not fileExists:
+            imgCache.meta['addr'] = imgCache.meta['addr'] + size
+        print("save>>>>",imgCache.cache['meta'])
+        webai.cfg.put('cache',imgCache.cache)
+        jpg = None
+        img = None
+        gc.collect()
+        return True
+
+    def load(filename):
+        imgCache.init()
+        idx = imgCache.meta['idx']
+        fileExists = filename in imgCache.files
+        if not fileExists:
+            return None
+        size = imgCache.files[filename]['size']
+        addr = imgCache.files[filename]['addr']
+        jpeg_buff = utils.flash_read(addr,size)
+        return jpeg_buff
+
+    def loadImg(filename):
+        imgCache.init()
+        idx = imgCache.meta['idx']
+        fileExists = filename in imgCache.files
+        if not fileExists:
+            return None
+        size = imgCache.files[filename]['size']
+        addr = imgCache.files[filename]['addr']
+        jpeg_buff = utils.flash_read(addr,size)
+        img = image.Image(jpeg_buff, from_bytes = True)
+        jpeg_buff = None
+        gc.collect()
+        return img
+
+    def clear():
+        webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0x900000}})
+
 class cfg:
 
     def init():
@@ -53,8 +123,8 @@ class cfg:
         jsonData = ujson.dumps(obj)
         cfg.size = len(jsonData.encode())
         #write size
-        hi = cfg.size // 255
-        lo = cfg.size % 255
+        hi = cfg.size // 256
+        lo = cfg.size % 256
         utils.flash_write(cfg.length,bytearray([hi,lo]))
         #write data
         utils.flash_write(cfg.data,jsonData.encode())
@@ -85,7 +155,7 @@ class cfg:
             val = obj[key]
             del obj[key]
             cfg.save(obj)
-        obj = None
+        ob = None
         del obj
         return val
 
@@ -105,8 +175,8 @@ class cfg:
 
     def saveBlob(barray):
         blobLength = len(barray)
-        hi = blobLength // 255
-        lo = blobLength % 255
+        hi = blobLength // 256
+        lo = blobLength % 256
         utils.flash_write(cfg.blobData,bytearray([hi,lo]))
         #write data
         utils.flash_write(cfg.blobData+2,barray)
@@ -989,8 +1059,7 @@ class cmdProcess:
 
     def reportSaveOK():
         webai.lcd.clear()
-        webai.showMessage("running...")
-        #webai.draw_string(110,100,"running...",scale=2,x_spacing=2)
+        webai.draw_string(100,90,"running...",scale=2,x_spacing=6)
         webai.mqtt.pub("PONG","saveCmd",includeID=True)
 
     def reportBoot():
@@ -1057,46 +1126,48 @@ class cmdProcess:
                      [mx+50,my+50,124,124],
                      [mx+60,my+60,104,104]]
 
-        def upload():
-            if not webai.esp8285.at('AT')[1].decode()[:2] == 'OK':
+        def upload(speed=10):
+            try:
+                atResp = webai.esp8285.at('AT')
+                print("wifi checked:[",atResp,"]")
+                if atResp == 'esp8285 timeout':
+                    webai.esp8285.reset()
+                    webai.esp8285.init(115200*speed)
+                    time.sleep(3)
+            except:
                 print("連線異常！嘗試重新連線...")
-                webai.esp8285.init(115200*10)
-                webai.state()
-            else:
-                print("wifi checked OK !!!!")
-            webai.draw_string(110,90,"上傳中...   ",scale=2)
+                webai.esp8285.reset()
+                webai.esp8285.init(115200*speed)
+                time.sleep(1)
+                
+            webai.draw_string(70,90,"Uploading...        ",scale=2,x_spacing=6)
             try:
                 def cb(now,all):
-                    #webai.draw_string(110,80,"上傳中... ",scale=2,img=webai.img,lcd_show=False)
-                    webai.img.clear()
-                    webai.draw_string(110,80,"上傳中... ",scale=2,img=webai.img,lcd_show=False)
-                    webai.draw_string(105,130,"("+str(now)+"/"+str(all)+")",scale=2,img=webai.img)
+                    webai.draw_string(70,80,"Uploading...       ",scale=2,img=webai.img,lcd_show=False,x_spacing=6)
+                    webai.draw_string(95,130,"("+str(now)+"/"+str(all)+")",scale=2,img=webai.img)
                     print(now,'/',all)
+                print("files:",files)
                 state = webai.cloud.uploadPic(url,hashKey,dsname,files,cb)
                 time.sleep(0.001)
                 gc.collect()
-                for i in files:
-                    webai.fs.rm(i)
-                    print("delete ",i)
-                    os.sync()
-                try:
-                    webai.fs.rm('main.py')
-                except:
-                    pass
-                os.sync()
+                webai.imgCache.clear()
                 webai.img = image.Image()
                 webai.draw_string(110,80,"上傳完成  ",scale=2,img=webai.img,lcd_show=False)
                 webai.draw_string(95,130,"請重新開機  ",scale=2,img=webai.img)
+                return True
             except Exception as ee:
-                print(">>>>>>>",ee)
+                print('--- Caught Exception ---')
+                import sys
+                sys.print_exception(ee)
+                print('----------------------------')
                 time.sleep(0.001)
                 gc.collect()
                 webai.img = image.Image()
                 webai.draw_string(110,80,"上傳失敗  ",scale=2,img=webai.img,lcd_show=False)
-                webai.draw_string(95,130,"請重新操作  ",scale=2,img=webai.img)
-            finally:
-                while True:
-                    time.sleep(1)
+                webai.draw_string(110,130,"重新嘗試  ",scale=2,img=webai.img)
+                webai.img = None
+                gc.collect()
+                return False
 
 
         def onclick(name,state):
@@ -1123,24 +1194,21 @@ class cmdProcess:
             webai.img = webai.snapshot()
             snap = "0"+str(idx)+" " if idx < 10 else str(idx)+" "
             end = "0"+str(count)+" " if count < 10 else str(count)+" "
-            jpg = webai.img.copy(roi=(48,16,48+224,16+224))
+            #jpg = webai.img.copy(roi=(48,16,48+224,16+224))
             webai.draw_string(25,5,snap,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
             webai.draw_string(35,35,"/",img=webai.img,scale=2,x_spacing=2,lcd_show=False)
             webai.draw_string(25,65,end,img=webai.img,scale=2,x_spacing=2,lcd_show=False)
             filename = "take"+str(idx)+"-"+str(rx)+"_"+str(ry)+"_"+str(rw)+"_"+str(rh)+"_320_240.jpg"
             if snapshot:
                 startTime = time.ticks_ms()
-                webai.img.draw_string(90,215,"save...",scale=2)
-                webai.img.draw_rectangle(rx,ry,rw,rh,(255,100,100),2,False)
-                webai.show(img=webai.img)
+                webai.img = webai.snapshot()
+                print('save>>>',filename,webai.imgCache.save(filename,webai.img))
+                files.append(filename)
                 webai.img = None
                 gc.collect()
-                jpg.save('/flash/'+filename)
-                print("save:",filename)
-                files.append(filename)
-                jpg = None
-                gc.collect()
                 webai.img = webai.snapshot()
+                webai.img.draw_rectangle(rx,ry,rw,rh,(255,100,100),2,False)
+                time.sleep(0.25)
                 webai.img.draw_rectangle(rx,ry,rw,rh,(255,100,100),2,False)
                 webai.img.draw_string(90,215,"save...",scale=2)
                 webai.img.draw_string(190,215,"    OK      ",scale=2)
@@ -1151,15 +1219,23 @@ class cmdProcess:
                 snapshot = False
             if completed:
                 break
-            jpg = None
+            #jpg = None
             gc.collect()
             webai.img.draw_rectangle(rx,ry,rw,rh,(255,255,255),2,False)
             webai.img.draw_cross(320//2,240//2,size=10,thickness=2)
             #webai.img.draw_string(10,10,"fps:"+str(clock.fps()))
             webai.show(img=webai.img)
 
-        upload()
-
+        if not upload(speed=10):
+            print("upload retry...1")
+            if not upload(speed=5):
+                print("upload retry...2")
+                if not upload(speed=3):
+                    print("upload retry...3")
+                    while upload(speed=1):
+                        print("upload retry.....")
+        while True:
+            time.sleep(1)
 
     #{ "fileName":"k-model",
     #  "modelType":"mobileNet",
@@ -1356,6 +1432,7 @@ class webai:
         webai.deviceID = esp8285.deviceID
         webai.lcd = lcd
         webai.camera = sensor
+        webai.imgCache = imgCache
         webai.init_camera_ok = False
         if camera:
             print("init camera...")
@@ -1406,6 +1483,7 @@ class webai:
     def draw_string(x, y, text, img=None, color=(255,255,255), scale=5,x_spacing=None, mono_space=False,lcd_show=True):
         clear = False
         if webai.img == None:
+            gc.collect()
             webai.img = image.Image()
             clear = True
         if x_spacing==None:
