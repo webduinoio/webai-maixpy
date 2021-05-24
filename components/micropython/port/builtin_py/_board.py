@@ -243,7 +243,7 @@ class cloud:
                            pass
                         percent = int((file_pos / filesize)*1000)//10
                         if showProgress:
-                            webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2)
+                            webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2,x_spacing=6)
                         if len(data) == (file_end - file_pos):
                             print("writing:",hex(start_pos+file_pos),'~', hex(start_pos+file_end),percent,'% ,',speed,"KB")
                             if not address==None:
@@ -917,10 +917,10 @@ class speaker:
     def setVolume(self, volume):
         self.volume = volume
 
-    def playAsync(self, folder='flash',filename=None, sample_rate=22030):
+    def playAsync(self, folder='flash',filename=None, sample_rate=11025):
         _thread.start_new_thread(self.play,(folder,filename,sample_rate))
 
-    def play(self, folder='flash',filename=None, sample_rate=22030):
+    def play(self, folder='flash',filename=None, sample_rate=11025):
         if(len(filename.lower())<4 or filename.lower()[-4:] != '.wav'):
             filename = filename + ".wav"
         self.wav_dev.set_sample_rate(sample_rate)
@@ -1028,6 +1028,7 @@ class cmdProcess:
                 webai.fw.set('min')
 
         elif(cmdData[:8]=='_TAKEPIC'):
+            webai.imgCache.clear()
             romType = 'std'
             print("!!!!! set romType=%s !!!!!"%romType)
             webai.fw.set(romType)
@@ -1140,7 +1141,7 @@ class cmdProcess:
                 webai.esp8285.init(115200*speed)
                 time.sleep(1)
                 
-            webai.draw_string(70,90,"Uploading...        ",scale=2,x_spacing=6)
+            #webai.draw_string(70,80,"Uploading...        ",scale=2,x_spacing=6)
             try:
                 def cb(now,all):
                     webai.draw_string(70,80,"Uploading...       ",scale=2,img=webai.img,lcd_show=False,x_spacing=6)
@@ -1232,8 +1233,11 @@ class cmdProcess:
                 print("upload retry...2")
                 if not upload(speed=3):
                     print("upload retry...3")
-                    while upload(speed=1):
+                    while True:
                         print("upload retry.....")
+                        if upload(speed=1):
+                            break
+                        
         while True:
             time.sleep(1)
 
@@ -1553,6 +1557,8 @@ class webai:
         return webai.img
         
     def show(url="",file="logo.jpg",img=None):
+        #magic delay , for thread switch!
+        time.sleep(0.01) 
         if img != None:
             webai.lcd.display(img)
         else:
@@ -1563,4 +1569,4 @@ class webai:
             webai.lcd.display(img)
 
 
-webai.init(camera=False,speed=10)
+webai.init(camera=False,speed=5)
