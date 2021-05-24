@@ -1,1 +1,0 @@
-print('skip _cmdCheck.py')

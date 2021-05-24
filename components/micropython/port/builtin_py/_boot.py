@@ -3,15 +3,8 @@ from Maix import GPIO
 import os,sys,time,gc,lcd,image,_thread
 '''
 
- _boot.py -> _cmdExec.py -> (0) -> boot.py -------> main.py
-     |              |                            /
-     |              + ----> (1) -> _cmdCheck.py +
-      \
-       +-- _board.py (webAI)
-
-'''
-boot_py = '''
-print('skip boot.py')
+ _boot.py -> _board.py (webAI)
+ 
 '''
 
 main_py = '''

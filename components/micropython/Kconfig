@@ -132,9 +132,6 @@ menu "Micropython configurations"
 		config MAIXPY_BUILTIN_PY_WEBAI_BLOCKLY
 			bool "Enable builtin py module _webai_blockly"
 			default y
-		config MAIXPY_BUILTIN_PY_WEBAI_API
-			bool "Enable builtin py module webai_api"
-			default y
 		config MAIXPY_BUILTIN_PY_WEBAI_EXT
 			bool "Enable builtin py module webai_ext"
 			default y

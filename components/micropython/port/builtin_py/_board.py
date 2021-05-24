@@ -1212,10 +1212,12 @@ class ASR:
     model_address = 0x1329C
     model_size = 5256 + 2 # bytes
     dtw_threshold = 350
-    evtList = [None]*10
+    cbkList = [None]*10
     recording = False
 
     def init(sample_rate=16000):
+        webai.fw.set('std')
+
         import time, _thread
         from Maix import GPIO, I2S
         from fpioa_manager import fm
@@ -1228,15 +1230,12 @@ class ASR:
         rx.channel_config(rx.CHANNEL_0, rx.RECEIVER,
                           align_mode=I2S.STANDARD_MODE)
         rx.set_sample_rate(sample_rate)
-
         ASR.sr = isolated_word(dmac=2, i2s=I2S.DEVICE_0, size=10,
-                                            shift=1)  # maix bit set shift=1
+                                         shift=1)  # maix bit set shift=1
         ASR.sr.set_threshold(0, 0, 10000)
-        ASR.srList = [None]*10
+        ASR.asrList = [None]*10
         ASR.load()
-
         _thread.start_new_thread(ASR.recognize, ())
-
     def set_dtw_threshold(dtw_threshold=350):
         ASR.dtw_threshold = dtw_threshold
 
@@ -1251,42 +1250,40 @@ class ASR:
         ASR.recording = True
         while True:
             if ASR.sr.Done == ASR.sr.record(index):
+                (frm_len, frm_data) = ASR.sr.get(index)
+                ASR.asrList[index] = [name, frm_len]
+                webai.cfg.put('asr', ASR.asrList)
+                ASR.save(index, frm_data)
                 print('save', index, 'ok')
-                ASR.srList[index] = ASR.sr.get(index)
-                ASR.save(index, name, ASR.srList[index])
                 ASR.recording = False
+                del frm_len, frm_data
                 break
             state = ASR.sr.state()
-            #if ASR.sr.Speak != state:
-                 #print('state', state)
+            # if ASR.sr.Speak != state:
+            #      print('state', state)
             time.sleep_ms(1)
+
     def load():
-        ASR.srList = webai.cfg.get('asr')
-        print('load asr', ASR.srList)
-        if ASR.srList:
-            srListLen = len(ASR.srList)
-            for index in range(srListLen):
-                if ASR.srList[index]:
+        ASR.asrList = webai.cfg.get('asr')
+        print('load asr list', ASR.asrList)
+        if ASR.asrList:
+            asrListLen = len(ASR.asrList)
+            for index in range(asrListLen):
+                if ASR.asrList[index]:
                     try:
-                        frm_len = ASR.srList[index][1]
+                        frm_len = ASR.asrList[index][1]
                         frm_data = webai.cfg.loadBlobAddr(ASR.model_address + index * ASR.model_size)
-                        model = (frm_len, frm_data)
-                        print('frm_data len', len(frm_data))
-                        ASR.sr.set(index, model)
+                        #print('frm_data len', len(frm_data))
+                        #ASR.sr.set(index, (frm_len, frm_data))
+                        del frm_len, frm_data
+                        gc.collect()
                     except Exception as e:
                         print('load', index, 'error', e)
-                        ASR.srList[index] = None
-
+                        ASR.asrList[index] = None
         else:
             print('asr key no exist')
-            ASR.srList = [None]*10
 
-    def save(index, name, model):
-        # model type: (frm_len, frm_data)
-        frm_len = model[0]
-        frm_data = model[1]
-        ASR.srList[index] = (name, frm_len)
-        webai.cfg.put('asr', ASR.srList)
+    def save(index, frm_data):
         webai.cfg.saveBlobAddr(ASR.model_address + index * ASR.model_size, frm_data)
 
     def recognize():
@@ -1297,14 +1294,13 @@ class ASR:
                     if result:
                         model_index = result[0]
                         dtw_threshold = result[1]
-                        #print('dtw threshold', dtw_threshold)
-                        callback = ASR.evtList[model_index]
+                        callback = ASR.cbkList[model_index]
                         if callback and dtw_threshold < ASR.dtw_threshold:
                             callback()
-            time.sleep_ms(1)
+            time.sleep_ms(100)
 
-    def addASRListener(index, callback=None): # registry callback
-        ASR.evtList[index] = callback
+    def addAasrListener(index, callback=None): # registry callback
+        ASR.cbkList[index] = callback
 
 class webai:
 
