@@ -1414,7 +1414,7 @@ class ASR:
                             callback()
             time.sleep_ms(100)
 
-    def addAasrListener(index, callback=None): # registry callback
+    def addASRListener(index, callback=None): # registry callback
         ASR.cbkList[index] = callback
 
 class io:
@@ -1487,7 +1487,6 @@ class io:
                 __class__.PINUSE.append(PIN)
                 __class__.PINIO.append(IO)
 
->>>>>>> webai_oo
 
 class webai:
 
