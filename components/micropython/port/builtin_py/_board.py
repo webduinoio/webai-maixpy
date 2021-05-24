@@ -13,6 +13,24 @@ import sensor,lcd,machine,time,network,ujson
 import gc,uos,json,os,image,_thread,ubinascii
 
 _thread.stack_size(16*1024)
+class _res_:
+    def init():
+        __class__.addr = 0x700000
+        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"logo.jpg":[5332560,39598],"m01.jpg":[5372158,34824],"m02.jpg":[5406982,29248],"mleft.jpg":[5436230,33802],"mooncar.jpg":[5470032,53385],"mright.jpg":[5523417,33773],"mrun.jpg":[5557190,31887]}
+
+    def loadImg(name):
+        info = __class__.data[name]
+        jpeg_buff = utils.flash_read(__class__.addr+info[0],info[1])
+        return image.Image(jpeg_buff, from_bytes = True)
+
+    def font():
+        return __class__.addr+__class__.data['1.font'][0]
+    
+    def monster():
+        return __class__.addr+__class__.data['2.monster'][0]
+
+    def face():
+        return __class__.addr+__class__.data['3.face'][0]
 
 # 0x900000 ~ 0x97FFFF  512KB 存放快取圖片，減少檔案系統使用
 class imgCache:
@@ -1033,6 +1051,10 @@ class cmdProcess:
                 print("!!!!! yoloCar use romType=min !!!!!")
                 webai.fw.set('min')
 
+            if 'args' in info and info['args']=='faceMask':
+                print("!!!!! faceMask use romType=min !!!!!")
+                webai.fw.set('min')
+
         elif(cmdData[:8]=='_TAKEPIC'):
             webai.imgCache.clear()
             romType = 'std'
@@ -1516,7 +1538,9 @@ class webai:
         webai.img = None
         webai.debug = False
         webai.speed = speed
-        webai.initialize = True        
+        webai.initialize = True
+        _res_.init()
+        webai.res = _res_        
         fw.init()
         cfg.init()
         fw.now(fwType='qry')
@@ -1595,7 +1619,7 @@ class webai:
             clear = True
         if x_spacing==None:
             x_spacing = 8*scale
-        image.font_load(image.UTF8, 16, 16, 0x980000)
+        image.font_load(image.UTF8, 16, 16, webai.res.font())
         webai.img.draw_string(x, y, text, scale=scale, color=color, x_spacing=x_spacing, mono_space=mono_space)
         image.font_free()
         if lcd_show:
@@ -1605,7 +1629,7 @@ class webai:
 
     def logo():
         try:
-            webai.img = image.Image('/flash/logo.jpg')
+            webai.img = webai.res.loadImg('logo.jpg')
             lcd.display(webai.img)
         except:
             print("logo image error")    

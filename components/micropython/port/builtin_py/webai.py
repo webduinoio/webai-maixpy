@@ -273,7 +273,8 @@ class ColorObject:
 
 class FaceDetect:
     def init(address=0xD40000):
-        FaceDetect.task = kpu.load(address)
+        from _board import webai
+        FaceDetect.task = kpu.load(webai.res.face())
         anchor = (0.1606, 0.3562, 0.4712, 0.9568, 0.9877, 1.9108, 1.8761, 3.5310, 3.4423, 5.6823)
         kpu.init_yolo2( FaceDetect.task , 0.5, 0.3, 5, anchor)
 
