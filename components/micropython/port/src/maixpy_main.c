@@ -569,22 +569,12 @@ soft_reset:
     if (ret != 0 && !is_ide_dbg_mode()) // user canceled or ide mode
     {
         mp_printf(&mp_plat_print, "ide mode:false\r\n"); // for maixpy ide
-        if (ret==0){
-            ret = pyexec_file_if_exists("boot.py");
-            mp_printf(&mp_plat_print, "exe boot:%d\r\n",ret); // for maixpy ide
-            if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL)
-            {
-                ret = pyexec_file_if_exists("main.py");
-                mp_printf(&mp_plat_print, "exe main:%d\r\n",ret); // for maixpy ide
-            }
-        }else{
-            ret = pyexec_frozen_module("_cmdCheck.py");
-            mp_printf(&mp_plat_print, "exe _cmdCheck:%d\r\n",ret); // for maixpy ide
-            if (ret==1 && pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL)
-            {
-                ret = pyexec_file_if_exists("main.py");
-                mp_printf(&mp_plat_print, "exe main:%d\r\n",ret); // for maixpy ide
-            }
+        ret = pyexec_file_if_exists("boot.py");
+        mp_printf(&mp_plat_print, "exe boot:%d\r\n",ret); // for maixpy ide
+        if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL)
+        {
+            ret = pyexec_file_if_exists("main.py");
+            mp_printf(&mp_plat_print, "exe main:%d\r\n",ret); // for maixpy ide
         }
     }else{
         mp_printf(&mp_plat_print, "ide mode:true\r\n"); // for maixpy ide
