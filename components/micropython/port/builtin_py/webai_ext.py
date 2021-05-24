@@ -74,6 +74,8 @@ class Io:
     PINUSE=[]
     PINIO=[]
     def io(PIN):
+        if type(PIN) == int:
+            PIN = str(PIN)
         PIN=webai_blockly.fpioaMapGPIO[PIN]
         if PIN in __class__.PINUSE:
             return __class__.PINIO[__class__.PINUSE.index(PIN)]
@@ -84,6 +86,8 @@ class Io:
             __class__.PINIO.append(IO)
             return IO
     def read(PIN):
+        if type(PIN) == int:
+            PIN = str(PIN)
         PIN=webai_blockly.fpioaMapGPIO[PIN]
         if PIN in __class__.PINUSE:
             return __class__.PINIO[__class__.PINUSE.index(PIN)].value()
@@ -94,6 +98,8 @@ class Io:
             __class__.PINIO.append(IO)
             return IO.value()
     def write(PIN,PWMMODE=False,PWM_FREQ=50,VALUE=0):
+        if type(PIN) == int:
+            PIN = str(PIN)
         if PWMMODE:
             USER_PWM_LIST_COUNT=len(webai_blockly.USER_PWM_LIST)
             if USER_PWM_LIST_COUNT<8:
@@ -127,6 +133,9 @@ class Io:
                 IO.value(VALUE)
                 __class__.PINUSE.append(PIN)
                 __class__.PINIO.append(IO)
+
+
+
 
 #   █████████                                         
 #  ███░░░░░███                                        
