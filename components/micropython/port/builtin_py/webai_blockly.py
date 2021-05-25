@@ -110,6 +110,7 @@ class Lcd:
 
 class Camera:
     def setFlip(self,flip):
+        webai.camera.initCamera(flip)
         webai.camera.set_vflip(flip)
 
     def snapshot(self):
@@ -218,20 +219,20 @@ class ObjectTracking():
             # modelPathStart=modelPath.find('(')
             # modelPathEnd=modelPath.rfind(')')
             # classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
-            cwd="flash"
-            if cwd=="flash":
-                model=0xB90000
-            else:
-                model="/sd/"+model+".kmodel"
-            self.classes=classes
             if model == 'monster':
-              self.task = self.kpu.load(webai.res.monster())
+                self.task = self.kpu.load(webai.res.monster())
             else:
-              self.task = self.kpu.load(model)
+                cwd="flash"
+                if cwd=="flash":
+                    model=0xB90000
+                else:
+                    model="/sd/"+model+".kmodel"
+                self.task = self.kpu.load(model)
+            self.classes=classes
             self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
             self.kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
         except Exception as e:
-            print(e)
+            print('>>>',e)
             sys.exit()
     def checkObjects(self):
         try:
