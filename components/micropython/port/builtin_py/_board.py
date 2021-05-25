@@ -16,9 +16,12 @@ _thread.stack_size(16*1024)
 class _res_:
     def init():
         __class__.addr = 0x700000
-        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"logo.jpg":[5332560,39598],"m01.jpg":[5372158,34824],"m02.jpg":[5406982,29248],"mleft.jpg":[5436230,33802],"mooncar.jpg":[5470032,53385],"mright.jpg":[5523417,33773],"mrun.jpg":[5557190,31887]}
+        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"chick.jpg":[5332560,34807],"chicken.jpg":[5367367,33543],"egg.jpg":[5400910,28949],"go.sh":[5429859,44],"img01.jpg":[5429903,51014],"img02.jpg":[5480917,50906],"img03.jpg":[5531823,41081],"img04.jpg":[5572904,64104],"lion.jpg":[5637008,43064],"logo.jpg":[5680072,39598],"m01.jpg":[5719670,34824],"m02.jpg":[5754494,29248],"mleft.jpg":[5783742,33802],"mooncar.jpg":[5817544,53385],"mright.jpg":[5870929,33773],"mrun.jpg":[5904702,31887]}
+
 
     def loadImg(name):
+        if not name in __class__.data:
+            return image.Image(name)
         info = __class__.data[name]
         jpeg_buff = utils.flash_read(__class__.addr+info[0],info[1])
         return image.Image(jpeg_buff, from_bytes = True)
@@ -400,7 +403,7 @@ class cloud:
         finally:
             f.close()
             wCli.Close()
-        img = image.Image(saveFile)
+        img = webai.res.loadImg(saveFile)
         os.remove(saveFile)
         return img
 
@@ -1172,6 +1175,8 @@ class cmdProcess:
             #webai.draw_string(70,80,"Uploading...        ",scale=2,x_spacing=6)
             try:
                 def cb(now,all):
+                    if not webai.img == None:
+                        webai.img.clear()
                     webai.draw_string(70,80,"Uploading...       ",scale=2,img=webai.img,lcd_show=False,x_spacing=6)
                     webai.draw_string(95,130,"("+str(now)+"/"+str(all)+")",scale=2,img=webai.img)
                     print(now,'/',all)
@@ -1693,7 +1698,7 @@ class webai:
             if len(url)>0:
                 img = webai.cloud.getImg(url)
             elif len(file)>0:
-                img = image.Image(file)
+                img = webai.res.loadImg(file)
             webai.lcd.display(img)
 
 
