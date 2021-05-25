@@ -103,7 +103,7 @@ class Lcd:
                     print("displayImg err:",ee)
             elif(len(img.lower())<4 or img.lower()[-4:] != '.jpg'):
                 img = img + ".jpg"
-            webai.img = image.Image(img)
+            webai.img = webai.res.loadImg(img)
         else:
             webai.img = img
         webai.lcd.display(webai.img)
