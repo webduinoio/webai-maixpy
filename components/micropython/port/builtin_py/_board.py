@@ -1411,7 +1411,7 @@ class ASR:
                         frm_len = ASR.asrList[index][1]
                         frm_data = webai.cfg.loadBlobAddr(ASR.model_address + index * ASR.model_size)
                         #print('frm_data len', len(frm_data))
-                        #ASR.sr.set(index, (frm_len, frm_data))
+                        ASR.sr.set(index, (frm_len, frm_data))
                         del frm_len, frm_data
                         gc.collect()
                     except Exception as e:
