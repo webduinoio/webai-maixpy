@@ -1419,6 +1419,7 @@ class ASR:
                         ASR.asrList[index] = None
         else:
             print('asr key no exist')
+            ASR.asrList = [None]*10
 
     def save(index, frm_data):
         webai.cfg.saveBlobAddr(ASR.model_address + index * ASR.model_size, frm_data)
