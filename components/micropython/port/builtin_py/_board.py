@@ -16,8 +16,7 @@ _thread.stack_size(16*1024)
 class _res_:
     def init():
         __class__.addr = 0x700000
-        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"chick.jpg":[5332560,34807],"chicken.jpg":[5367367,33543],"egg.jpg":[5400910,28949],"go.sh":[5429859,44],"img01.jpg":[5429903,51014],"img02.jpg":[5480917,50906],"img03.jpg":[5531823,41081],"img04.jpg":[5572904,64104],"lion.jpg":[5637008,43064],"logo.jpg":[5680072,39598],"m01.jpg":[5719670,34824],"m02.jpg":[5754494,29248],"mleft.jpg":[5783742,33802],"mooncar.jpg":[5817544,53385],"mright.jpg":[5870929,33773],"mrun.jpg":[5904702,31887]}
-
+        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"blue.jpg":[5332560,58132],"face.py":[5390692,646],"faceMask.py":[5391338,3217],"green.jpg":[5394555,50776],"logo.jpg":[5445331,39598],"m01.jpg":[5484929,34824],"m02.jpg":[5519753,29248],"mleft.jpg":[5549001,33802],"monster.py":[5582803,1301],"mqttCar.py":[5584104,2285],"mright.jpg":[5586389,33773],"mrun.jpg":[5620162,31887],"red.jpg":[5652049,44478],"yellow.jpg":[5696527,57615],"yoloCar.py":[5754142,4091]}
 
     def loadImg(name):
         if not name in __class__.data:
@@ -34,6 +33,18 @@ class _res_:
 
     def face():
         return __class__.addr+__class__.data['3.face'][0]
+
+    def loadPy(name):
+        name += '.py'
+        if not name in __class__.data:
+            cwd = os.getcwd()
+            f = open(cwd+'/'+name)
+            pythonCode = f.read()
+            del f, pythonCode
+            return exec(pythonCode)
+        info = __class__.data[name]
+        pythonCode = utils.flash_read(__class__.addr+info[0],info[1])
+        return exec(pythonCode)
 
 # 0x900000 ~ 0x97FFFF  512KB 存放快取圖片，減少檔案系統使用
 class imgCache:
@@ -1114,9 +1125,10 @@ class cmdProcess:
         cmdObj = ujson.loads(info)
         webai.cfg.remove('cmd')
         pythonFile = cmdObj['args']
-        import sys
-        __import__(pythonFile)
-        del sys.modules[pythonFile]
+        try:
+            webai.res.loadPy(pythonFile)
+        except:
+            print('file not found')
         while True:
             time.sleep(1)
 

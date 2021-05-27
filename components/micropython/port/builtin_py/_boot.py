@@ -202,15 +202,6 @@ except:
     finally:
         f.close()
 
-try:
-    os.stat('boot.py')[6]
-except:
-    try:
-        f = open('/flash/boot.py','w')
-        f.write(boot_py)
-    finally:
-        f.close()
-
 fm.fpioa.set_function(7, fm.fpioa.GPIO7)
 resetPin = GPIO(GPIO.GPIO7, GPIO.IN)
 if resetPin.value()==0:
@@ -221,9 +212,6 @@ if resetPin.value()==0:
         f1 = open('/flash/main.py','w')
         f1.write(main_py)
         f1.close()
-        f2 = open('/flash/boot.py','w')
-        f2.write(boot_py)
-        f2.close()
     finally:
         os.sync()
     time.sleep(1)
@@ -239,7 +227,6 @@ if resetPin.value()==0:
 #fm.unregister(7)
 img = None
 resetPin = None
-boot_py = None
 main_py = None
 gc.collect()
 
@@ -267,5 +254,7 @@ del ide, ide_mode_conf
 print(banner)
 banner = None
 
+exec(boot_py)
+print('[boot.py] end')
 
 from _board import webai

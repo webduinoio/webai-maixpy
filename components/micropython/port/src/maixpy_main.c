@@ -569,8 +569,8 @@ soft_reset:
     if (ret != 0 && !is_ide_dbg_mode()) // user canceled or ide mode
     {
         mp_printf(&mp_plat_print, "ide mode:false\r\n"); // for maixpy ide
-        ret = pyexec_file_if_exists("boot.py");
-        mp_printf(&mp_plat_print, "exe boot:%d\r\n",ret); // for maixpy ide
+        // ret = pyexec_file_if_exists("boot.py");
+        // mp_printf(&mp_plat_print, "exe boot:%d\r\n",ret); // for maixpy ide
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL)
         {
             ret = pyexec_file_if_exists("main.py");
