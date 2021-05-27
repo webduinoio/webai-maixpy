@@ -237,12 +237,12 @@ class ObjectTracking():
     def checkObjects(self):
         try:
             self.classesArr=[]
-            img = self.sensor.snapshot()        
-            code = self.kpu.run_yolo2(self.task, img)
+            webai.img = self.sensor.snapshot()        
+            code = self.kpu.run_yolo2(self.task, webai.img)
             if code:
                 for i in code:
-                    img.draw_rectangle(i.rect())
-                    webai.lcd.display(img)
+                    webai.img.draw_rectangle(i.rect())
+                    webai.lcd.display(webai.img)
                     respList={"x":i.x(),"y":i.y(),"w":i.w(),"h":i.h(),"value":i.value(),"classid":i.classid(),"index":i.index(),"objnum":i.objnum(),"objname":self.classes[i.classid()]}
                     self.classesArr.append(respList)
                     # print(self.classesArr)
@@ -251,7 +251,7 @@ class ObjectTracking():
                     #     lcd.draw_string(i.x(), i.y()+12, '%.3f'%i.value(), lcd.RED, lcd.WHITE)
                 return True
             else:
-                webai.lcd.display(img)
+                webai.lcd.display(webai.img)
                 return False
         except Exception as e:
             print(e)
@@ -305,14 +305,14 @@ class ImageClassification():
     def checkClass(self):
         try:
             self.classesArr=[]
-            img = self.sensor.snapshot()
-            fmap = self.kpu.forward(self.task, img)
+            webai.img = self.sensor.snapshot()
+            fmap = self.kpu.forward(self.task, webai.img)
             plist=fmap[:]
             pmax=max(plist)
             #print(pmax)
             max_index=plist.index(pmax)
             #lcd.display(img, oft=(0,0))
-            webai.lcd.display(img)
+            webai.lcd.display(webai.img)
             #lcd.draw_string(0, 100, "%.2f:%s "%(pmax, labels[max_index].strip()))
             objname=self.classes[max_index].strip()
             #print(objname)
