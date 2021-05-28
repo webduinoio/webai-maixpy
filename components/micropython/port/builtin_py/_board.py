@@ -505,7 +505,7 @@ class esp8285:
         esp8285.wifiStatusPin.irq(esp8285.state,GPIO.IRQ_BOTH)
         fm.register(27, fm.fpioa.UART2_TX, force=True)
         fm.register(28, fm.fpioa.UART2_RX, force=True)
-        esp8285.uart = UART(UART.UART2, 115200, timeout=5000,read_buf_len=512)
+        esp8285.uart = UART(UART.UART2, 115200, timeout=5000,read_buf_len=2048)
         esp8285.mqttCallbackProc = True
         esp8285.waitInitFinish()
         if not speed == 115200:
