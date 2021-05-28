@@ -117,7 +117,9 @@ try:
         webai.cmdProcess.load()
 
 except Exception as e:
-    print(">>>>",e)
+    print("boot exception:",e)
+    sys.print_exception(e)
+
 '''
 
 main_py = '''
@@ -257,4 +259,4 @@ banner = None
 exec(boot_py)
 print('[boot.py] end')
 
-from _board import webai
+#from _board import webai
