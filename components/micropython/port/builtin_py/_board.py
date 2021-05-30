@@ -959,6 +959,9 @@ class speaker:
         _thread.start_new_thread(self.play,(folder,filename,sample_rate))
 
     def play(self, folder='flash',filename=None, sample_rate=11025):
+        if hasattr(ASR, 'sr'):
+            webai.asr.stop()
+
         if(len(filename.lower())<4 or filename.lower()[-4:] != '.wav'):
             filename = filename + ".wav"
         self.wav_dev.set_sample_rate(sample_rate)
@@ -974,6 +977,10 @@ class speaker:
            elif ret == 0:
                break
         player.finish()
+
+        if hasattr(ASR, 'sr'):
+            webai.asr.run()
+
         esp8285.at("AT+SPEAKER=0")
 
     def start(self, folder="", filename=None, sample_rate=48000):
@@ -1399,6 +1406,12 @@ class ASR:
         _thread.start_new_thread(ASR.recognize, ())
     def set_dtw_threshold(dtw_threshold=350):
         ASR.dtw_threshold = dtw_threshold
+
+    def run():
+        ASR.sr.run()
+
+    def stop():
+        ASR.sr.stop()
 
     def record(index, name):
         # 0 Init
