@@ -1004,12 +1004,11 @@ class speaker:
 class cmdProcess:
     def load():
         print('[cmdProcess] load')
-        if not webai.esp8285.wifiConnect:
-            print("wifi offline , skip cmdProcess load()")
-            return
-        print("report boot")
-        cmdProcess.reportBoot()
-        print("report boot...OK")
+        if webai.esp8285.wifiConnect:
+            print("report boot")
+            cmdProcess.reportBoot()
+            print("report boot...OK")
+
         json = webai.cfg.remove('cmd')
         print(">>>> cmd >>>>>>",str(json))
         if not json==None:
@@ -1042,9 +1041,11 @@ class cmdProcess:
         time.sleep(0.25)
         gc.collect()
         webai.mem.info()
-        print("report save ok")
-        cmdProcess.reportSaveOK()
-        print("cmdProcess:",cmdData)
+        if webai.esp8285.wifiConnect:
+            print("report save ok")
+            cmdProcess.reportSaveOK()
+            print("cmdProcess:",cmdData)
+            
         if(cmdData[:8]=='_DEPLOY/'):
             print("_DEPLOY/",cmdData[8:])
             info = ujson.loads(cmdData[8:])
@@ -1136,6 +1137,12 @@ class cmdProcess:
         # get pythonCode to main.py
         info = ujson.loads(info)
         print("DEPLOY CMD:",info)
+
+        # usb 傳輸
+        # 已透過 mpfshell 覆蓋 main.py， 直接預設執行
+        if info['url'] == 'local':
+            return
+
         # server 需改成提供 http:// 方式
         url = info['url'].replace('https://','http://')
         webai.cloud.download(url,img=False,redirect=False,filename='/flash/main.py')

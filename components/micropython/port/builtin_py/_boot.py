@@ -13,7 +13,7 @@ try:
     from board import board_info
     from _board import webai,QRCodeRunner
     from machine import Timer
-    import time
+    import time, ujson
 
     cmdData = webai.cfg.get("cmd")
     print("[boot.py] cmdData:",cmdData)
@@ -111,9 +111,17 @@ try:
     else:
         print("[boot] run command...")
         #time.sleep(1)
-        webai.connect(WIFI_SSID,WIFI_PASW)
-        webai.esp8285.wifiConnect = True
-        webai.mqtt.sub('PING',webai.cmdProcess.sub,includeID=True)
+
+        # check usb or mqtt mode
+        cmdData = webai.cfg.get('cmd')
+        if cmdData[:8]=='_DEPLOY/':
+            info = ujson.loads(cmdData[8:])
+            if 'url' in info:
+                if info['url'] != 'local':
+                    webai.connect(WIFI_SSID,WIFI_PASW)
+                    webai.esp8285.wifiConnect = True
+                    webai.mqtt.sub('PING',webai.cmdProcess.sub,includeID=True) 
+        
         webai.cmdProcess.load()
 
 except Exception as e:
@@ -183,6 +191,7 @@ for i in range(200):
 del i
 
 print("<<<< [Start] >>>>")
+time.sleep_ms(100) # wait for stop command
 lcd.init()
 #time.sleep(0.5)
 
