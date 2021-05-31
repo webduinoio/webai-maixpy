@@ -618,9 +618,9 @@ class esp8285:
             gc.collect()
             while esp8285.uart_cb.any():
                 myLine = uarObj.readline()
-                print("[mqttCallback]:",myLine)
                 if(myLine==None):
                     break
+                print("[mqttCallback]:",myLine)
                 myLine = myLine.decode().strip()
                 if(myLine=='mqttConnect'):
                     esp8285.mqttConnect = True
@@ -633,7 +633,6 @@ class esp8285:
                     data = sub[sub.find(',')+1:]
                     if topic in esp8285.subs:
                         esp8285.subs[topic](topic,data)
-
         except Exception as ee:
             print('mqttCallback err:',ee)
 
@@ -651,8 +650,9 @@ class esp8285:
 
     def setSub(topic,callback,includeID=False):
         if includeID:
-            topic = esp8285.deviceID+"/"+topic
-        esp8285.subs[topic] = callback
+            esp8285.subs[esp8285.deviceID+"/"+topic] = callback
+        else:
+            esp8285.subs[topic] = callback
         return esp8285.sub(topic,includeID)
 
     def sub(topic,includeID=False):
@@ -726,6 +726,7 @@ class esp8285:
 
     def at(command, timeout=5000):
         esp8285.uart.write(command + '\r\n')
+        print('at command:',command)
         myLine = ''
         data = []
         startTime = time.ticks_ms()
@@ -740,7 +741,7 @@ class esp8285:
                 if(ifdata):
                     myLine = esp8285.uart.readline()
                     data.append(myLine)
-                    #print(">>>>>",myLine)
+                    #print("myLine:",myLine)
                     if "ERROR" in myLine:
                         return "ERROR"
                     elif "busy s" in myLine:
@@ -748,7 +749,7 @@ class esp8285:
                     elif "busy p" in myLine:
                         return "busy processing"
                 else:
-                    print("esp8285 timeout!")
+                    print("esp8285 timeout!",data)
                     return "esp8285 timeout"
             return data
         except Exception as e:
