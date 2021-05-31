@@ -2,7 +2,6 @@
 WebAI Board Package
 -------------------
 """
-
 from board import board_info
 from machine import UART
 from fpioa_manager import fm
@@ -13,17 +12,94 @@ import sensor,lcd,machine,time,network,ujson
 import gc,uos,json,os,image,_thread,ubinascii
 
 _thread.stack_size(16*1024)
+
+class cmdSerial:
+
+    def init():
+        from machine import UART
+        cmdSerial.repl = UART.repl_uart()
+        cmdSerial.repl.init(1200000, 8, None, 1, read_buf_len=2048, ide=False, from_ide=False)
+
+    def print(x,y,text):
+        webai.lcd.draw_string(x,y,text,lcd.WHITE)
+
+    def readLine():
+        while not cmdSerial.repl.any():
+            pass
+        recv = cmdSerial.repl.readline()
+        return recv.decode("utf-8").rstrip()
+
+    def run():
+        while True:
+            try:
+                cmd = cmdSerial.readLine()
+                webai.lcd.clear()
+                cmdSerial.print(10,10,"CMD:"+cmd)
+                #time.sleep(1)
+                func = getattr(cmdSerial,cmd)
+                func(cmdSerial.repl)
+                func = None
+                gc.collect()
+                time.sleep(0.01)
+            except Exception as ee:
+                webai.lcd.clear(lcd.RED)
+                time.sleep(0.1)
+                webai.lcd.clear(lcd.BLACK)
+                errmsg = str(ee)
+                cmdSerial.print(10,100,errmsg)
+                if len(errmsg)>38:
+                    cmdSerial.print(10,120,errmsg[38:])
+
+    def deviceID(repl):
+        print(webai.deviceID)
+
+    def deployPy(repl):
+        filename = cmdSerial.readLine()
+        codeLen = cmdSerial.readLine()
+        codeText = repl.read(int(codeLen))
+        webai.fs.save(filename,codeText)
+        print('OK')
+
+    def setWiFi(repl):
+        ssid = cmdSerial.readLine()
+        pwd = cmdSerial.readLine()
+        webai.cfg.put('wifi',{'ssid':ssid,'pwd':pwd})
+        print("OK")
+        time.sleep(0.1)
+        machine.reset()
+
+    def restart(repl):
+        import machine
+        print("OKOK")
+        time.sleep(0.1)
+        machine.reset()
+
+    def snapshot(repl):
+        img = webai.snapshot()
+        jpg = img.compress(80)
+        jpg = jpg.to_bytes()
+        # send jpg size
+        print(str(len(jpg)))
+        # send jpg bytearray
+        repl.write(jpg)
+
+
 class _res_:
     def init():
         __class__.addr = 0x700000
         __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"blue.jpg":[5332560,58132],"face.py":[5390692,646],"faceMask.py":[5391338,3217],"green.jpg":[5394555,50776],"logo.jpg":[5445331,39598],"m01.jpg":[5484929,34824],"m02.jpg":[5519753,29248],"mleft.jpg":[5549001,33802],"monster.py":[5582803,1301],"mqttCar.py":[5584104,2285],"mright.jpg":[5586389,33773],"mrun.jpg":[5620162,31887],"red.jpg":[5652049,44478],"yellow.jpg":[5696527,57615],"yoloCar.py":[5754142,4091]}
 
     def loadImg(name):
+        webai.img = None
+        gc.collect()
         if not name in __class__.data:
             return image.Image(name)
         info = __class__.data[name]
         jpeg_buff = utils.flash_read(__class__.addr+info[0],info[1])
-        return image.Image(jpeg_buff, from_bytes = True)
+        webai.img = image.Image(jpeg_buff, from_bytes = True)
+        jpeg_buff = None
+        gc.collect()
+        return webai.img
 
     def font():
         return __class__.addr+__class__.data['1.font'][0]
@@ -101,6 +177,8 @@ class imgCache:
 
     def loadImg(filename):
         imgCache.init()
+        webai.img = None
+        gc.collect()
         idx = imgCache.meta['idx']
         fileExists = filename in imgCache.files
         if not fileExists:
@@ -696,9 +774,9 @@ class esp8285:
                     if "newVersion:O" in myLine:
                         printLogVersion=True
                         myLine="Starting OTA"
-                        showMessage("update,please wait...",x=-1,y=2.5,center=False,clear=True)
+                        webai.showMessage("update,please wait...",x=-1,y=2.5,center=False,clear=True)
                         break
-                    if "newVersion:X" in myLine:
+                    if "newVersion:X" in myLine or "newVersion : X" in myLine: 
                         # showMessage("version is new")
                         raise Exception("version is new")
                         #sys.exit()
@@ -707,7 +785,7 @@ class esp8285:
                     raise Exception('timeout')
 
             if not printLogVersion:
-                showMessage("update,please wait...",clear=True)
+                webai.showMessage("update,please wait...",clear=True)
             startTime=time.ticks_ms()
             ifdata=True
             timeout=60000
@@ -726,22 +804,22 @@ class esp8285:
                                 try:
                                     myLine=myLine.decode()
                                     myLine=myLine.rstrip()
-                                    showMessage(myLine)
+                                    webai.showMessage(myLine)
                                 except Exception as e:
                                     print('ota exception:',e)
                                     sys.print_exception(e)
                     else:
                         print("timeout")
-                        showMessage("update error",clear=True)
+                        webai.showMessage("update error",clear=True)
                         raise Exception('timeout')
-                showMessage("succeeded,reboot...",clear=True)
+                webai.showMessage("succeeded,reboot...",clear=True)
                 print("succeeded")
                 import machine
                 machine.reset()
             except Exception as e:
                 print("update error, exception:",e)
                 sys.print_exception(e)
-                showMessage("update error",clear=True)
+                webai.showMessage("update error",clear=True)
                 time.sleep(2)
         except Exception as f:
             print("update error , exception:",f)
@@ -1585,9 +1663,11 @@ class webai:
         a = time.ticks()
         esp8285.init(115200*webai.speed)
         webai.speaker = speaker()
-        webai.logo()
+        if cfg.get('cmd') == None:
+            webai.logo()
         #link obj
         webai.cmdProcess = cmdProcess
+        webai.cmdSerial = cmdSerial
         webai.io = io
         webai.io.init()
         webai.cfg = cfg
@@ -1622,7 +1702,7 @@ class webai:
         print('spend time:', (time.ticks()-a)/1000,'sec')
         print('')
         webai.mem.info()
-        webai.clear()
+        # webai.clear()
 
     def clear():
         if not webai.img == None:
