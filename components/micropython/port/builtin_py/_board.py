@@ -937,12 +937,18 @@ class fs:
             code = code + line
         return code
 
-    def save(file,line):
-        try:
-            f = open(file,'w')
-            f.write(line)
-        finally:
-            f.close()
+    def save(file,src):
+        if src.__class__.__name__ is 'Image':
+            webai.img = src
+            webai.img.save(file)
+        else:
+            try:
+                f = open(file,'w')
+                f.write(src)
+            finally:
+                f.close()
+                del f
+                gc.collect()
 
     def size(file):
         return os.stat(file)[6]
