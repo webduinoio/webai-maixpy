@@ -15,10 +15,10 @@ _thread.stack_size(16*1024)
 
 class cmdSerial:
 
-    def init():
+    def init(baudrate=1200000):
         from machine import UART
         cmdSerial.repl = UART.repl_uart()
-        cmdSerial.repl.init(1200000, 8, None, 1, read_buf_len=2048, ide=False, from_ide=False)
+        cmdSerial.repl.init(baudrate, 8, None, 1, read_buf_len=2048, ide=False, from_ide=False)
 
     def print(x,y,text):
         webai.lcd.draw_string(x,y,text,lcd.WHITE)
@@ -1688,6 +1688,9 @@ class webai:
         if not webai.img == None:
             webai.img.clear()
         webai.lcd.clear()
+
+    def adc():
+        return webai.esp8285.at("AT+SYSADC")[0].decode().strip()
 
     def showMessage(msg, x=-1, y=0, center=True, clear=False):
         if msg=="":
