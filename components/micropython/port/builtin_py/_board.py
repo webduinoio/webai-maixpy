@@ -87,7 +87,7 @@ class cmdSerial:
 class _res_:
     def init():
         __class__.addr = 0x700000
-        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"chick.jpg":[5332560,34807],"chicken.jpg":[5367367,33543],"egg.jpg":[5400910,28949],"faceMask.py":[5429859,3225],"go.sh":[5433084,44],"img01.jpg":[5433128,51014],"img02.jpg":[5484142,50906],"img03.jpg":[5535048,41081],"img04.jpg":[5576129,64104],"lion.jpg":[5640233,43064],"logo.jpg":[5683297,39598],"m01.jpg":[5722895,34824],"m02.jpg":[5757719,29248],"mleft.jpg":[5786967,33802],"mooncar.jpg":[5820769,53385],"mqttCar.py":[5874154,829],"mright.jpg":[5874983,33773],"mrun.jpg":[5908756,31887],"yoloCar.py":[5940643,4069]}
+        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"blue.jpg":[5332560,58132],"face.py":[5390692,646],"faceMask.py":[5391338,3217],"green.jpg":[5394555,50776],"logo.jpg":[5445331,39598],"m01.jpg":[5484929,34824],"m02.jpg":[5519753,29248],"mleft.jpg":[5549001,33802],"monster.py":[5582803,1301],"mqttCar.py":[5584104,2285],"mright.jpg":[5586389,33773],"mrun.jpg":[5620162,31887],"red.jpg":[5652049,44478],"yellow.jpg":[5696527,57615],"yoloCar.py":[5754142,4091]}
 
     def loadImg(name):
         webai.img = None
@@ -1037,6 +1037,9 @@ class speaker:
         _thread.start_new_thread(self.play,(folder,filename,sample_rate))
 
     def play(self, folder='flash',filename=None, sample_rate=11025):
+        if hasattr(ASR, 'sr'):
+            webai.asr.stop()
+
         if(len(filename.lower())<4 or filename.lower()[-4:] != '.wav'):
             filename = filename + ".wav"
         self.wav_dev.set_sample_rate(sample_rate)
@@ -1052,6 +1055,10 @@ class speaker:
            elif ret == 0:
                break
         player.finish()
+
+        if hasattr(ASR, 'sr'):
+            webai.asr.run()
+
         esp8285.at("AT+SPEAKER=0")
 
     def start(self, folder="", filename=None, sample_rate=48000):
@@ -1082,12 +1089,11 @@ class speaker:
 class cmdProcess:
     def load():
         print('[cmdProcess] load')
-        if not webai.esp8285.wifiConnect:
-            print("wifi offline , skip cmdProcess load()")
-            return
-        print("report boot")
-        cmdProcess.reportBoot()
-        print("report boot...OK")
+        if webai.esp8285.wifiConnect:
+            print("report boot")
+            cmdProcess.reportBoot()
+            print("report boot...OK")
+
         json = webai.cfg.remove('cmd')
         print(">>>> cmd >>>>>>",str(json))
         if not json==None:
@@ -1120,9 +1126,11 @@ class cmdProcess:
         time.sleep(0.25)
         gc.collect()
         webai.mem.info()
-        print("report save ok")
-        cmdProcess.reportSaveOK()
-        print("cmdProcess:",cmdData)
+        if webai.esp8285.wifiConnect:
+            print("report save ok")
+            cmdProcess.reportSaveOK()
+            print("cmdProcess:",cmdData)
+            
         if(cmdData[:8]=='_DEPLOY/'):
             print("_DEPLOY/",cmdData[8:])
             info = ujson.loads(cmdData[8:])
@@ -1214,6 +1222,12 @@ class cmdProcess:
         # get pythonCode to main.py
         info = ujson.loads(info)
         print("DEPLOY CMD:",info)
+
+        # usb 傳輸
+        # 已透過 mpfshell 覆蓋 main.py， 直接預設執行
+        if info['url'] == 'local':
+            return
+
         # server 需改成提供 http:// 方式
         url = info['url'].replace('https://','http://')
         webai.cloud.download(url,img=False,redirect=False,filename='/flash/main.py')
@@ -1470,6 +1484,12 @@ class ASR:
         _thread.start_new_thread(ASR.recognize, ())
     def set_dtw_threshold(dtw_threshold=350):
         ASR.dtw_threshold = dtw_threshold
+
+    def run():
+        ASR.sr.run()
+
+    def stop():
+        ASR.sr.stop()
 
     def record(index, name):
         # 0 Init
