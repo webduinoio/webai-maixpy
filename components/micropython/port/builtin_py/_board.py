@@ -15,17 +15,23 @@ _thread.stack_size(16*1024)
 
 class cmdSerial:
 
-    def init(baudrate=1200000):
+    def init():
         from machine import UART
+        webai.initCamera(1)
         cmdSerial.repl = UART.repl_uart()
-        cmdSerial.repl.init(baudrate, 8, None, 1, read_buf_len=2048, ide=False, from_ide=False)
+        cmdSerial.repl.init(115200*4, 8, None, 1, read_buf_len=20*1024, ide=False, from_ide=False)
 
-    def print(x,y,text):
+    def print(x,y,text,clear,debug = True):
+        debug = False
+        if not debug:
+            return
+        if clear:
+            webai.lcd.clear()
         webai.lcd.draw_string(x,y,text,lcd.WHITE)
 
     def readLine():
         while not cmdSerial.repl.any():
-            pass
+            time.sleep(0.1)
         recv = cmdSerial.repl.readline()
         return recv.decode("utf-8").rstrip()
 
@@ -33,22 +39,27 @@ class cmdSerial:
         while True:
             try:
                 cmd = cmdSerial.readLine()
-                webai.lcd.clear()
-                cmdSerial.print(10,10,"CMD:"+cmd)
-                #time.sleep(1)
+                #webai.lcd.clear()
+                cmdSerial.print(10,10,"CMD:"+cmd,False)
                 func = getattr(cmdSerial,cmd)
                 func(cmdSerial.repl)
                 func = None
-                gc.collect()
-                time.sleep(0.01)
+                
             except Exception as ee:
                 webai.lcd.clear(lcd.RED)
                 time.sleep(0.1)
                 webai.lcd.clear(lcd.BLACK)
+                cmdSerial.print(10,80,"CMD:"+cmd,False)
                 errmsg = str(ee)
-                cmdSerial.print(10,100,errmsg)
+                cmdSerial.print(30,100,errmsg,False)
                 if len(errmsg)>38:
-                    cmdSerial.print(10,120,errmsg[38:])
+                    cmdSerial.print(30,120,errmsg[38:],False)
+
+    def mem(repl):
+        from Maix import utils
+        import KPU as kpu
+        info = "mem_free:"+str(gc.mem_free()/1024)+"KB"
+        print(info)
 
     def deviceID(repl):
         print(webai.deviceID)
@@ -60,6 +71,11 @@ class cmdSerial:
         webai.fs.save(filename,codeText)
         print('OK')
 
+    def clear(repl):
+        while cmdSerial.repl.any():
+            cmdSerial.repl.read(1)
+        print("OK")
+
     def setWiFi(repl):
         ssid = cmdSerial.readLine()
         pwd = cmdSerial.readLine()
@@ -70,19 +86,55 @@ class cmdSerial:
 
     def restart(repl):
         import machine
-        print("OKOK")
+        print("OK")
         time.sleep(0.1)
         machine.reset()
 
     def snapshot(repl):
+        #webai.initCamera(1)
         img = webai.snapshot()
         jpg = img.compress(80)
         jpg = jpg.to_bytes()
+        cmdSerial.print(10,30,"snapshot write bytes:"+str(len(jpg)), False)
         # send jpg size
         print(str(len(jpg)))
         # send jpg bytearray
         repl.write(jpg)
+        cmdSerial.print(10,50,"snapshot write OK", False)
+        img = None
+        jpg = None
+        time.sleep(0.01)
+        gc.collect()
 
+    def flashRead(repl):
+        info = cmdSerial.readLine()
+        cmdSerial.print(10,30,"address,size: "+info,True)
+        info = info.split(',')
+        addr = int(info[0])
+        readLen = int(info[1])
+        data = utils.flash_read(addr,readLen)
+        cmdSerial.print(10,70,"flash_read OK",False)
+        print(str(len(data)))
+        repl.write(data)
+        cmdSerial.print(10,110,"send bytearray...OK",False)
+        data = None
+        time.sleep(0.01)
+        gc.collect()
+
+    def flashWrite(repl):
+        info = cmdSerial.readLine()
+        cmdSerial.print(10,30,"write address,size: "+info,True)
+        info = info.split(',')
+        addr = int(info[0])
+        readLen = int(info[1])
+        cmdSerial.print(10,110,"write to flash...",False)
+        data = repl.read(int(readLen))
+        utils.flash_write(addr,data)
+        cmdSerial.print(10,110,"write to flash...OK",False)
+        data = None
+        time.sleep(0.01)
+        gc.collect()
+        print('OK')
 
 class _res_:
     def init():
@@ -691,6 +743,7 @@ class esp8285:
         err = 0
         while 1:
             try:
+                esp8285.at('')
                 esp8285.wlan.connect(SSID, PWD)
             except Exception:
                 err += 1
@@ -1684,10 +1737,18 @@ class webai:
         webai.asr = ASR
         webai.imgCache = imgCache
         webai.init_camera_ok = False
+
         if camera:
             print("init camera...")
             webai.initCamera()
             print("init camera done.")
+
+        if webai.adc()==1023:
+            print("init cmdSerial...")
+            webai.speaker.play(filename='logo.wav',sample_rate=48000)
+            cmdSerial.init()
+            _thread.start_new_thread(cmdSerial.run,())
+
         webai.btnL = btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
         webai.btnR = btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
         webai.btnL.addBtnEventListener(webai.onBtn)
@@ -1711,7 +1772,7 @@ class webai:
         webai.lcd.clear()
 
     def adc():
-        return webai.esp8285.at("AT+SYSADC")[0].decode().strip()
+        return int(webai.esp8285.at("AT+SYSADC")[0].decode().strip())
 
     def showMessage(msg, x=-1, y=0, center=True, clear=False):
         if msg=="":
