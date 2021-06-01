@@ -123,6 +123,7 @@ try:
                     webai.mqtt.sub('PING',webai.cmdProcess.sub,includeID=True) 
         
         webai.cmdProcess.load()
+        webai.lcd.clear()
 
 except Exception as e:
     print("boot exception:",e)
