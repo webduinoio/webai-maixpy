@@ -139,7 +139,7 @@ class cmdSerial:
 class _res_:
     def init():
         __class__.addr = 0x700000
-        __class__.data={"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"blue.jpg":[5332560,58132],"face.py":[5390692,646],"faceMask.py":[5391338,3217],"green.jpg":[5394555,50776],"logo.jpg":[5445331,39598],"m01.jpg":[5484929,34824],"m02.jpg":[5519753,29248],"mleft.jpg":[5549001,33802],"monster.py":[5582803,1301],"mooncar.jpg":[5584104,53385],"mqttCar.py":[5637489,2285],"mright.jpg":[5639774,33773],"mrun.jpg":[5673547,31887],"red.jpg":[5705434,44478],"yellow.jpg":[5749912,57615],"yoloCar.py":[5807527,4091]}
+        __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"blue.jpg":[5379864,58132],"face.py":[5437996,646],"faceMask.py":[5438642,3217],"green.jpg":[5441859,50776],"logo.jpg":[5492635,39598],"m01.jpg":[5532233,34824],"m02.jpg":[5567057,29248],"mleft.jpg":[5596305,33802],"monster.py":[5630107,1301],"mooncar.jpg":[5631408,53385],"mqttCar.py":[5684793,2285],"mright.jpg":[5687078,33773],"mrun.jpg":[5720851,31887],"red.jpg":[5752738,44478],"voice.py":[5797216,1698],"yellow.jpg":[5798914,57615],"yoloCar.py":[5856529,4091]}
 
     def loadImg(name):
         webai.img = None
@@ -166,6 +166,10 @@ class _res_:
             pythonCode = utils.flash_read(__class__.addr+info[0],info[1])
         return pythonCode
 
+    def asr(num):
+        info = __class__.data[str(num)+'.asr']
+        return utils.flash_read(__class__.addr+info[0], info[1])
+
     def font():
         return __class__.addr+__class__.data['1.font'][0]
     
@@ -175,8 +179,6 @@ class _res_:
     def face():
         return __class__.addr+__class__.data['3.face'][0]
 
-    def asr(num):
-        return __class__.addr+__class__.data[num+'.asr'][0]
 
 # 0x900000 ~ 0x97FFFF  512KB 存放快取圖片，減少檔案系統使用
 class imgCache:
@@ -1277,8 +1279,8 @@ class cmdProcess:
         pythonFile = cmdObj['args']
         try:
            exec(webai.res.loadPy(pythonFile))
-        except:
-            print('file not found')
+        except Exception as e:
+            print('file not found', e)
         while True:
             time.sleep(1)
 
@@ -1525,7 +1527,7 @@ class ASR:
     cbkList = [None]*10
     recording = False
 
-    def init(sample_rate=16000):
+    def init(sample_rate=16000, fromRes=False):
         webai.fw.set('std')
 
         import time, _thread
@@ -1544,8 +1546,9 @@ class ASR:
                                          shift=1)  # maix bit set shift=1
         ASR.sr.set_threshold(0, 0, 10000)
         ASR.asrList = [None]*10
-        ASR.load()
+        ASR.load(fromRes)
         _thread.start_new_thread(ASR.recognize, ())
+
     def set_dtw_threshold(dtw_threshold=350):
         ASR.dtw_threshold = dtw_threshold
 
@@ -1579,26 +1582,40 @@ class ASR:
             #      print('state', state)
             time.sleep_ms(1)
 
-    def load():
-        ASR.asrList = webai.cfg.get('asr')
-        print('load asr list', ASR.asrList)
-        if ASR.asrList:
-            asrListLen = len(ASR.asrList)
-            for index in range(asrListLen):
+    def load(fromRes=False):
+        # load built-in asr model
+        if fromRes:
+            ASR.asrList = [['man_1', 170], ['man_2', 133], ['man_3', 181], ['woman_1', 119], ['woman_2', 109], ['woman_3', 146], ['google_1', 164], ['google_2', 126], ['google_3', 176], None]
+            print('load asr list', ASR.asrList)
+            for index in range(len(ASR.asrList)):
                 if ASR.asrList[index]:
-                    try:
-                        frm_len = ASR.asrList[index][1]
-                        frm_data = webai.cfg.loadBlobAddr(ASR.model_address + index * ASR.model_size)
-                        #print('frm_data len', len(frm_data))
-                        ASR.sr.set(index, (frm_len, frm_data))
-                        del frm_len, frm_data
-                        gc.collect()
-                    except Exception as e:
-                        print('load', index, 'error', e)
-                        ASR.asrList[index] = None
+                    frm_len = ASR.asrList[index][1]
+                    frm_data = webai.res.asr(index)
+                    #print('frm_data', frm_data)
+                    ASR.sr.set(index, (frm_len, frm_data))
+                    del frm_len, frm_data
+                    time.sleep(0.01)
+                    gc.collect()
         else:
-            print('asr key no exist')
-            ASR.asrList = [None]*10
+            ASR.asrList = webai.cfg.get('asr')
+            print('load asr list', ASR.asrList)
+            if ASR.asrList:
+                asrListLen = len(ASR.asrList)
+                for index in range(asrListLen):
+                    if ASR.asrList[index]:
+                        try:
+                            frm_len = ASR.asrList[index][1]
+                            frm_data = webai.cfg.loadBlobAddr(ASR.model_address + index * ASR.model_size)
+                            ASR.sr.set(index, (frm_len, frm_data))
+                            del frm_len, frm_data
+                            time.sleep(0.01)
+                            gc.collect()
+                        except Exception as e:
+                            print('load', index, 'error', e)
+                            ASR.asrList[index] = None
+            else:
+                print('asr key no exist')
+                ASR.asrList = [None]*10
 
     def save(index, frm_data):
         webai.cfg.saveBlobAddr(ASR.model_address + index * ASR.model_size, frm_data)
@@ -1610,9 +1627,9 @@ class ASR:
                     result = ASR.sr.result()
                     if result:
                         model_index = result[0]
-                        dtw_threshold = result[1]
+                        dtw = result[1]
                         callback = ASR.cbkList[model_index]
-                        if callback and dtw_threshold < ASR.dtw_threshold:
+                        if callback and dtw < ASR.dtw_threshold:
                             callback()
             time.sleep_ms(100)
 
@@ -1753,11 +1770,11 @@ class webai:
             webai.initCamera()
             print("init camera done.")
 
-        if webai.adc()==1023:
-            print("init cmdSerial...")
-            webai.speaker.play(filename='logo.wav',sample_rate=48000)
-            cmdSerial.init()
-            _thread.start_new_thread(cmdSerial.run,())
+        # if webai.adc()==1023:
+        #     print("init cmdSerial...")
+        #     webai.speaker.play(filename='logo.wav',sample_rate=48000)
+        #     cmdSerial.init()
+        #     _thread.start_new_thread(cmdSerial.run,())
 
         webai.btnL = btn("btnL",7,fm.fpioa.GPIOHS7,GPIO.GPIOHS7)
         webai.btnR = btn("btnR",16,fm.fpioa.GPIOHS16,GPIO.GPIOHS16)
