@@ -1213,13 +1213,15 @@ class cmdProcess:
                 print("!!!!! set romType=%s !!!!!"%romType)
                 webai.fw.set(romType)
 
-            if 'args' in info and info['args']=='yoloCar':
-                print("!!!!! yoloCar use romType=min !!!!!")
-                webai.fw.set('min')
-
-            if 'args' in info and info['args']=='faceMask':
-                print("!!!!! faceMask use romType=min !!!!!")
-                webai.fw.set('min')
+            if 'args' in info:
+                if info['args'] is 'voice':
+                    print("!!!!! voice use romType=std !!!!!")
+                    webai.fw.set('std')
+                elif info['args'] in ['faceMask', 'face', 'monsters', 'yoloCar', 'mqttCar']:
+                    print("!!!!! %s use romType=mini !!!!!"%info['args'])
+                    webai.fw.set('mini')
+                else:
+                    print("!!!!! %s is not built-in python code"%info['args'])
 
         elif(cmdData[:8]=='_TAKEPIC'):
             webai.imgCache.clear()
