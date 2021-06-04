@@ -418,7 +418,6 @@ class cmdSerial:
         if clear:
             webai.lcd.clear()
         webai.lcd.draw_string(x,y,text,lcd.WHITE)
-        print(text)
 
     def readLine():
         while not cmdSerial.repl.any():
@@ -551,21 +550,29 @@ class cmdSerial:
         print('OK')
 
 class _res_:
+
     def init():
         __class__.addr = 0x700000
         __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"blue.jpg":[5379864,58132],"face.py":[5437996,646],"faceMask.py":[5438642,3217],"green.jpg":[5441859,50776],"logo.jpg":[5492635,39598],"m01.jpg":[5532233,34824],"m02.jpg":[5567057,29248],"mleft.jpg":[5596305,33802],"monster.py":[5630107,1301],"mooncar.jpg":[5631408,53385],"mqttCar.py":[5684793,2285],"mright.jpg":[5687078,33773],"mrun.jpg":[5720851,31887],"red.jpg":[5752738,44478],"voice.py":[5797216,1698],"yellow.jpg":[5798914,57615],"yoloCar.py":[5856529,4091]}
 
-    def loadImg(name):
-        webai.img = None
+    def loadImg(name,newImg=False):
+        if not newImg:
+            webai.img = None
         gc.collect()
         if not name in __class__.data:
             return image.Image(name)
         info = __class__.data[name]
         jpeg_buff = utils.flash_read(__class__.addr+info[0],info[1])
-        webai.img = image.Image(jpeg_buff, from_bytes = True)
+        if not newImg:
+            webai.img = image.Image(jpeg_buff, from_bytes = True)
+        else:
+            img = image.Image(jpeg_buff, from_bytes = True)
         jpeg_buff = None
         gc.collect()
-        return webai.img
+        if not newImg:
+            return webai.img
+        else:
+            return img
         
     def loadPy(name):
         name += '.py'
@@ -628,7 +635,7 @@ class imgCache:
         utils.flash_write(imgCache.meta['addr'],jpg)
         if not fileExists:
             imgCache.meta['addr'] = imgCache.meta['addr'] + size
-        print("save>>>>",imgCache.cache['meta'])
+        #print("save>>>>",imgCache.cache['meta'])
         webai.cfg.put('cache',imgCache.cache)
         jpg = None
         img = None
@@ -776,7 +783,6 @@ class cfg:
 
 class cloud:
     container = 'user'
-    
     def download(self,url,filename=None,address=None,redirect=True,resize=320,img=True,showProgress=False):
         if redirect:
             server = "http://share.webduino.io/storage/"
@@ -1165,13 +1171,13 @@ class esp8285:
             try:
                 esp8285.at('')
                 esp8285.wlan.connect(SSID, PWD)
+                return True
             except Exception:
                 err += 1
                 print("Connect AP failed, now try again")
                 if err > 3:
-                    raise Exception("Conenct AP fail")
-                continue
-            break
+                    #raise Exception("Conenct AP fail")
+                    return False
         time.sleep(0.25)
 
     def updateState():
@@ -1380,7 +1386,7 @@ class btn:
 
 class fs:
     def reset():
-        #webai.cloud.download('http://192.168.31.167:8080/m_0x020000_webai_std_hash.bi',address=0x020000,img=False,redirect=True,showProgress=True)
+        #webai.cloud.download('https://share.webduino.io/storage/download/0422_121635.093_m_0x400000_maixpy_spiffs.img',address=0x400000,img=False,redirect=True,showProgress=True)
         webai.cloud.download('https://share.webduino.io/storage/download/0513_031833.705_m_0x400000_maixpy_spiffs.img',address=0x400000,img=False,redirect=True,showProgress=True)
 
     def ls():
@@ -1575,7 +1581,7 @@ class cmdProcess:
             print("report boot...OK")
 
         json = webai.cfg.remove('cmd')
-        print(">>>> cmd >>>>>>",str(json))
+        #print(">>>> cmd >>>>>>",str(json))
         if not json==None:
             cmdProcess.msgParser(json)
             return 1
@@ -1822,7 +1828,7 @@ class cmdProcess:
             if snapshot:
                 startTime = time.ticks_ms()
                 webai.img = webai.snapshot()
-                print('save>>>',filename,webai.imgCache.save(filename,webai.img))
+                #print('save>>>',filename,webai.imgCache.save(filename,webai.img))
                 files.append(filename)
                 webai.img = None
                 gc.collect()
@@ -2266,8 +2272,7 @@ class webai:
         esp8285.init(115200*webai.speed)
 
     def connect(ssid="webduino.io",pwd="webduino"):        
-        if(esp8285.wifiConnect == False):
-            esp8285.connect(ssid,pwd)
+        return esp8285.connect(ssid,pwd)
 
     def initCamera(flip):
         if not webai.init_camera_ok:

@@ -1,1 +1,0 @@
-print('skip _board.py')
