@@ -10,8 +10,7 @@ gc.enable()
 '''
 boot_py = '''
 try:
-    from board import board_info
-    from _board import webai,QRCodeRunner
+    from webai import *
     from machine import Timer
     import time, ujson
 
@@ -108,6 +107,15 @@ try:
         tim.stop()
         tim.deinit()
         del tim
+        # try:
+        #     if webai.adc()==1023:
+        #         print("init cmdSerial...")
+        #         webai.speaker.play(filename='logo.wav',sample_rate=48000)
+        #         webai.cmdSerial.init()
+        #         _thread.start_new_thread(webai.cmdSerial.run,())
+        # except Exception as e:
+        #     print("webai.adc() error:",e)                
+
     else:
         print("[boot] run command...")
         #time.sleep(1)
@@ -268,5 +276,3 @@ banner = None
 
 exec(boot_py)
 print('[boot.py] end')
-
-#from _board import webai

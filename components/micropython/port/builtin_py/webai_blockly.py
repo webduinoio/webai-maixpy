@@ -1,4 +1,4 @@
-from _board import webai
+from webai import webai
 from Maix import GPIO
 from board import board_info
 from fpioa_manager import fm
