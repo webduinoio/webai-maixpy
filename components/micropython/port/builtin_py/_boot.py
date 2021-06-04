@@ -19,13 +19,16 @@ try:
     SYSTEM_WiFiCheckCount = 5
 
     cfgData = webai.cfg.load()
-    WIFI_SSID = "webduino.io"
-    WIFI_PASW = "webduino"
+    WIFI_SSID = ""
+    WIFI_PASW = ""
     if 'wifi' in cfgData:
         WIFI_SSID = cfgData['wifi']['ssid']
         WIFI_PASW = cfgData['wifi']['pwd']    
 
-    if cmdData == None:
+    if WIFI_SSID=="":
+        pass
+
+    elif cmdData == None:
         print("[boot.py] normal boot...")
         def timerCount(timer):
             global SYSTEM_WiFiCheckCount
@@ -46,7 +49,7 @@ try:
         gc.collect()
         webai.showMessage("ver:"+os.uname()[6],x=-1,y=5,center=False,clear=False)
         webai.showMessage("WiFi checking...",x=-1,y=4,center=False,clear=False)
-        setWiFiFlag=True
+        setWiFiFlag=True 
         webai.showMessage("ssid: "+WIFI_SSID,x=-1,y=2.5,center=False,clear=False)
         err = 0
         wifiStatus=""
@@ -101,20 +104,11 @@ try:
                 gc.collect()
                 webai.initCamera(True)
                 QRCodeRunner.scan()
-        webai.lcd.clear()
         if not webai.img == None:
             webai.img.clear()
         tim.stop()
         tim.deinit()
-        del tim
-        try:
-            if webai.adc()==1023:
-                print("init cmdSerial...")
-                webai.speaker.play(filename='logo.wav',sample_rate=48000)
-                webai.cmdSerial.init()
-                _thread.start_new_thread(webai.cmdSerial.run,())
-        except Exception as e:
-            print("webai.adc() error:",e)                
+        del tim            
 
     else:
         print("[boot] run command...")
@@ -129,36 +123,50 @@ try:
                     webai.connect(WIFI_SSID,WIFI_PASW)
                     webai.esp8285.wifiConnect = True
                     webai.mqtt.sub('PING',webai.cmdProcess.sub,includeID=True) 
-        
         webai.cmdProcess.load()
-        webai.lcd.clear()
+    webai.lcd.clear()
 
 except Exception as e:
     print("boot exception:",e)
     sys.print_exception(e)
-
 '''
 
 main_py = '''
-try:
-    import gc, lcd, image, sys
-    gc.collect()
-    # lcd.init()
-    lcd.clear()
-    lcd.draw_string(0,0,'test',lcd.WHITE,lcd.BLACK)
-    loading = image.Image(size=(lcd.width(), lcd.height()))
-    # loading.draw_rectangle((0, 0, lcd.width(), lcd.height()), fill=True, color=(255, 0, 0))
-    info = "Webduino WebAI"
-    loading.draw_string(int(lcd.width()//2 - len(info) * 5)-10, (lcd.height())//2-20, info, color=(255, 255, 255), scale=2, mono_space=0)
-    # v = sys.implementation.version
-    # vers = 'V{}.{}.{} : webduino.io'.format(v[0],v[1],v[2])
-    # loading.draw_string(int(lcd.width()//2 - len(info) * 6), (lcd.height())//3 + 20, vers, color=(255, 255, 255), scale=1, mono_space=1)
-    lcd.display(loading)
-    # del loading, v, info, vers
-    del loading,info
-    gc.collect()
-finally:
-    gc.collect()
+from webai import *
+
+def usbDisconnect():
+    errImg = webai.res.loadImg('error.jpg',newImg=True)
+    webai.img.draw_image(errImg,210,105)
+    webai.show(img=webai.img)
+    errImg = None
+
+def usbConnected():
+    okImg = webai.res.loadImg('ok.jpg',newImg=True)
+    webai.img.draw_image(okImg,210,105)
+    webai.show(img=webai.img)
+    okImg = None
+
+def wifiConnected():
+    errImg = webai.res.loadImg('wifi_ok.jpg',newImg=True)
+    webai.img.draw_image(errImg,265,95)
+    webai.show(img=webai.img)
+    errImg = None
+
+def wifiDisconnect():
+    errImg = webai.res.loadImg('wifi_err.jpg',newImg=True)
+    webai.img.draw_image(errImg,265,95)
+    webai.show(img=webai.img)
+    errImg = None
+
+if webai.cfg.get('wifi')==None and webai.adc()<500:
+    webai.show(file='usb.jpg')
+    webai.speaker.play(filename='logo.wav',sample_rate=64000)
+    webai.cmdSerial.init()
+    _thread.start_new_thread(webai.cmdSerial.run,())
+    webai.show(file='usb.jpg')
+    usbDisconnect()
+    wifiDisconnect()
+
 '''
 
 banner = '''
@@ -180,7 +188,7 @@ __      _____| |__   __| |_   _ _ _ __   ___
   \_/\_/ \___|_.__/ \__,_|\__,_|_|_| |_|\___/ 
                                               
 Official Site : https://webduino.io
-[__20210516__]
+[__20210604__]
 '''
 #time.sleep(0.5)
 sys.path.append('')

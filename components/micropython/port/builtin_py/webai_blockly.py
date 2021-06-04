@@ -232,7 +232,7 @@ class ObjectTracking():
             self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
             self.kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
         except Exception as e:
-            print('>>>',e)
+            print('ObjectTracking exception:',e)
             sys.exit()
     def checkObjects(self):
         try:
