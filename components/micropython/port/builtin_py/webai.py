@@ -1074,7 +1074,7 @@ class esp8285:
             esp8285.uart = UART(UART.UART2, speed, timeout=5000, read_buf_len=1024*20)
         esp8285.wlan = network.ESP8285(esp8285.uart)
         # uart_logger
-        fm.register(18, fm.fpioa.UART3_RX, force=True)
+        fm.register(18, fm.fpioa.UART3_RX)
         esp8285.uart_cb = UART(UART.UART3, 115200,timeout=5000,read_buf_len=10240,callback=esp8285.mqttCallback)
         while esp8285.uart_cb.any():
             esp8285.uart_cb.readline()
@@ -1087,15 +1087,16 @@ class esp8285:
     #'subscribed'  : mqtt 已訂閱
     #'mqtt,${Topic},${Data}
     def mqttCallback(uarObj):
-        if not esp8285.mqttCallbackProc:
+        if not esp8285.mqttCallbackProc or esp8285.wifiConnect == False:
             return
         try:
             gc.collect()
             while esp8285.uart_cb.any():
                 myLine = uarObj.readline()
                 if(myLine==None):
+                    #print("read myLine:",myLine)
                     break
-                print("[mqttCallback]:",myLine)
+                #print("[mqttCallback]:",myLine)
                 myLine = myLine.decode().strip()
                 if(myLine=='mqttConnect'):
                     esp8285.mqttConnect = True
@@ -1202,7 +1203,7 @@ class esp8285:
 
     def at(command, timeout=5000):
         esp8285.uart.write(command + '\r\n')
-        print('at command:',command)
+        #print('at command:',command)
         myLine = ''
         data = []
         startTime = time.ticks_ms()
