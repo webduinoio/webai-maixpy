@@ -553,7 +553,7 @@ class _res_:
 
     def init():
         __class__.addr = 0x700000
-        __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"blue.jpg":[5379864,58132],"face.py":[5437996,646],"faceMask.py":[5438642,3217],"green.jpg":[5441859,50776],"logo.jpg":[5492635,39598],"m01.jpg":[5532233,34824],"m02.jpg":[5567057,29248],"mleft.jpg":[5596305,33802],"monster.py":[5630107,1301],"mooncar.jpg":[5631408,53385],"mqttCar.py":[5684793,2285],"mright.jpg":[5687078,33773],"mrun.jpg":[5720851,31887],"red.jpg":[5752738,44478],"voice.py":[5797216,1698],"yellow.jpg":[5798914,57615],"yoloCar.py":[5856529,4091]}
+        __class__.data = {"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"blue.jpg":[5332560,58132],"error.jpg":[5390692,5637],"face.py":[5396329,646],"faceMask.py":[5396975,3217],"green.jpg":[5400192,50776],"logo.jpg":[5450968,39598],"m01.jpg":[5490566,34824],"m02.jpg":[5525390,29248],"mleft.jpg":[5554638,33802],"monster.py":[5588440,1301],"mooncar.jpg":[5589741,53385],"mqttCar.py":[5643126,2285],"mright.jpg":[5645411,33773],"mrun.jpg":[5679184,31887],"ok.jpg":[5711071,5775],"red.jpg":[5716846,44478],"usb.jpg":[5761324,22026],"wifi_err.jpg":[5783350,6540],"wifi_ok.jpg":[5789890,6180],"yellow.jpg":[5796070,57615],"yoloCar.py":[5853685,4091]}
 
     def loadImg(name,newImg=False):
         if not newImg:
@@ -860,8 +860,10 @@ class cloud:
                 gc.collect()
         if showProgress:
             webai.draw_string(110,100,"下載完成  ",scale=2)
+            webai.img = None
+            gc.collect()
         http.exit()
-        if not filename==None:
+        if not filename == None:
             saveFile.close()
 
     def uploadPic(self,url,hashkey,dsname,files,cb=None):
@@ -872,6 +874,7 @@ class cloud:
         while True:
             try:
                 self._putBytearray(_bytearray,desFile,retry)
+                return "http://share.webduino.io/storage/_download/"+self.container+"/"+desFile
                 break
             except Exception as ee:
                 retry = retry - 1
@@ -1353,28 +1356,36 @@ class btn:
 
                 if pin['value'] == 0: # press
                     for evt in self.eventHandler:
-                        evt(self.name, btn.DOWN)                
+                        btn.handlerBtnCallback(evt,self.name,btn.DOWN)
                     self.longPressCheck = True
                     self.longPressTime = pin['time']
 
                 if pin['value'] == 1 and self.lastPin['time']!=0 : # up
                     self.longPressCheck = False
                     for evt in self.eventHandler:
-                        evt(self.name, btn.CLICK)
+                        btn.handlerBtnCallback(evt,self.name,btn.CLICK)
                 self.lastPin = pin
 
             if self.longPressCheck and self.btn.value()==0 and (time.ticks_ms() - self.longPressTime)>500:
                 for evt in self.eventHandler:
-                    evt(self.name, btn.LONG_PRESS)
+                    btn.handlerBtnCallback(evt,self.name,btn.LONG_PRESS)
                 self.longPressCheck = False
                 self.lastPin['time'] = 0
             time.sleep(0.001)
+
+    #
+    def handlerBtnCallback(evt,btnName,btnState):
+        try:
+            evt(btnName,btnState)
+        except Exception as e:
+            print(e)
 
     def state(self):
         self.btnState = btn.DOWN if(self.btn.value()==0) else btn.UP
         return self.btnState
 
     def addBtnEventListener(self,eventFunc):
+        self.eventHandler = [] # Only supports one trigger event
         self.eventHandler.append(eventFunc)
 
     def removeBtnEventListener(self,eventFunc):
@@ -2251,6 +2262,7 @@ class webai:
             webai.lcd.display(webai.img)
         if clear:
             webai.img = None
+            gc.collect()
 
     def logo():
         try:
@@ -2288,9 +2300,13 @@ class webai:
         for evt in webai.btnHandler:
             if(webai.btnL.state() == 1 and webai.btnR.state() == 1):
                 state = 3
-            evt(name,state)
+            try:
+                evt(name,state)
+            except Exception as e:
+                print("onBtn exception:",e)
 
     def addBtnListener(evt):
+        webai.btnHandler = [] # Only supports one trigger event
         webai.btnHandler.append(evt)
 
     def run(file):
