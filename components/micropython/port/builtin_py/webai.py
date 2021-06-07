@@ -553,7 +553,7 @@ class _res_:
 
     def init():
         __class__.addr = 0x700000
-        __class__.data = {"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"blue.jpg":[5332560,58132],"error.jpg":[5390692,5637],"face.py":[5396329,646],"faceMask.py":[5396975,3217],"green.jpg":[5400192,50776],"logo.jpg":[5450968,39598],"m01.jpg":[5490566,34824],"m02.jpg":[5525390,29248],"mleft.jpg":[5554638,33802],"monster.py":[5588440,1301],"mooncar.jpg":[5589741,53385],"mqttCar.py":[5643126,2285],"mright.jpg":[5645411,33773],"mrun.jpg":[5679184,31887],"ok.jpg":[5711071,5775],"red.jpg":[5716846,44478],"usb.jpg":[5761324,22026],"wifi_err.jpg":[5783350,6540],"wifi_ok.jpg":[5789890,6180],"yellow.jpg":[5796070,57615],"yoloCar.py":[5853685,4091]}
+        __class__.data = {"1.font":[0,2097152],"2.monster":[2097152,1633704],"3.face":[3730856,1601704],"bg.jpg":[5332560,25516],"blue.jpg":[5358076,58132],"error.jpg":[5416208,5637],"face.py":[5421845,646],"faceMask.py":[5422491,3217],"green.jpg":[5425708,50776],"logo.jpg":[5476484,39598],"m01.jpg":[5516082,34824],"m02.jpg":[5550906,29248],"mleft.jpg":[5580154,33802],"monster.py":[5613956,1301],"mooncar.jpg":[5615257,53385],"mqttCar.py":[5668642,2285],"mright.jpg":[5670927,33773],"mrun.jpg":[5704700,31887],"ok.jpg":[5736587,5775],"red.jpg":[5742362,44478],"usb.jpg":[5786840,22026],"wifi_err.jpg":[5808866,6540],"wifi_ok.jpg":[5815406,6180],"yellow.jpg":[5821586,57615],"yoloCar.py":[5879201,4091]}
 
     def loadImg(name,newImg=False):
         if not newImg:
@@ -838,6 +838,8 @@ class cloud:
                         percent = int((file_pos / filesize)*1000)//10
                         if showProgress:
                             webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2,x_spacing=6)
+                            webai.img = None
+                            gc.collect()
                         if len(data) == (file_end - file_pos):
                             print("writing:",hex(start_pos+file_pos),'~', hex(start_pos+file_end),percent,'% ,',speed,"KB")
                             if not address==None:
@@ -857,12 +859,13 @@ class cloud:
                     raise e
             finally:
                 data = None
-                gc.collect()
+        http.exit()
+        http = None 
+        gc.collect()
         if showProgress:
             webai.draw_string(110,100,"下載完成  ",scale=2)
             webai.img = None
             gc.collect()
-        http.exit()
         if not filename == None:
             saveFile.close()
 
@@ -2142,6 +2145,9 @@ class io:
 
 class webai:
 
+    def wifi(ssid='KingKit_2.4G',pwd='webduino'):
+        webai.cfg.put('wifi',{'ssid':ssid,'pwd':pwd})      
+
     def init(camera=True,speed=20):
         webai.btnHandler = []
         if hasattr(webai,'initialize'):
@@ -2251,7 +2257,7 @@ class webai:
         clear = False
         if webai.img == None:
             gc.collect()
-            webai.img = image.Image()
+            webai.img = webai.res.loadImg('bg.jpg')
             clear = True
         if x_spacing==None:
             x_spacing = 8*scale
