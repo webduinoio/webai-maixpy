@@ -553,8 +553,8 @@ class _res_:
 
     def init():
         __class__.addr = 0x700000
-        __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"blue.jpg":[5379864,58132],"error.jpg":[5437996,5637],"face.py":[5443633,1359],"faceMask.py":[5444992,1306],"green.jpg":[5446298,50776],"logo.jpg":[5497074,39598],"m01.jpg":[5536672,34824],"m02.jpg":[5571496,29248],"mleft.jpg":[5600744,33802],"monster.py":[5634546,1301],"mooncar.jpg":[5635847,53385],"mqttCar.py":[5689232,2285],"mright.jpg":[5691517,33773],"mrun.jpg":[5725290,31887],"ok.jpg":[5757177,5775],"red.jpg":[5762952,44478],"usb.jpg":[5807430,22026],"voice.py":[5829456,1678],"wifi_err.jpg":[5831134,6540],"wifi_ok.jpg":[5837674,6180],"yellow.jpg":[5843854,57615],"yoloCar.py":[5901469,4091]}
-
+        __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"bg.jpg":[5379864,25516],"blue.jpg":[5405380,58132],"error.jpg":[5463512,5637],"face.py":[5469149,646],"faceMask.py":[5469795,3217],"green.jpg":[5473012,50776],"logo.jpg":[5523788,39598],"m01.jpg":[5563386,34824],"m02.jpg":[5598210,29248],"mleft.jpg":[5627458,33802],"monster.py":[5661260,1301],"mooncar.jpg":[5662561,53385],"mqttCar.py":[5715946,2285],"mright.jpg":[5718231,33773],"mrun.jpg":[5752004,31887],"ok.jpg":[5783891,5775],"red.jpg":[5789666,44478],"usb.jpg":[5834144,22026],"voice.py":[5856170,1762],"wifi_err.jpg":[5857932,6540],"wifi_ok.jpg":[5864472,6180],"yellow.jpg":[5870652,57615],"yoloCar.py":[5928267,4091]}
+    
     def loadImg(name,newImg=False):
         if not newImg:
             webai.img = None
@@ -2020,10 +2020,9 @@ class ASR:
         size = ASR.sr.size()
         # load built-in asr model
         if fromRes:
-            resList = [['0', 165], ['1', 120], ['2', 173], ['3', 177], ['4', 114], ['5', 179], ['6', 86], ['7', 94], ['8', 163]]
-            ASR.asrList = resList[:size]
+            ASR.asrList = [['0', 165], ['1', 120], ['2', 173], ['3', 177], ['4', 114], ['5', 179], ['6', 86], ['7', 94], ['8', 163]]
             print('load asr list', ASR.asrList)
-            for index in range(size):
+            for index in range(len(ASR.asrList)):
                 if ASR.asrList[index]:
                     frm_len = ASR.asrList[index][1]
                     frm_data = webai.res.loadAsr(index)
@@ -2050,7 +2049,7 @@ class ASR:
                             ASR.asrList[index] = None
             else:
                 print('asr key no exist')
-                ASR.asrList = [None]*size
+                ASR.asrList = [None]*10
 
     def save(index, frm_data):
         webai.cfg.saveBlobAddr(ASR.model_address + index * ASR.model_size, frm_data)
