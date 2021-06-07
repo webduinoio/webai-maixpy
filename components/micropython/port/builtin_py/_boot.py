@@ -134,59 +134,23 @@ except Exception as e:
 main_py = '''
 from webai import *
 
-def usbDisconnect():
-    errImg = webai.res.loadImg('error.jpg',newImg=True)
-    webai.img.draw_image(errImg,210,105)
-    webai.show(img=webai.img)
-    errImg = None
-
-def usbConnected():
-    okImg = webai.res.loadImg('ok.jpg',newImg=True)
-    webai.img.draw_image(okImg,210,105)
-    webai.show(img=webai.img)
-    okImg = None
-
-def wifiConnected():
-    errImg = webai.res.loadImg('wifi_ok.jpg',newImg=True)
-    webai.img.draw_image(errImg,265,95)
-    webai.show(img=webai.img)
-    errImg = None
-
-def wifiDisconnect():
-    errImg = webai.res.loadImg('wifi_err.jpg',newImg=True)
-    webai.img.draw_image(errImg,265,95)
-    webai.show(img=webai.img)
-    errImg = None
-
 if webai.cfg.get('wifi')==None and webai.adc()<500:
-    webai.show(file='usb.jpg')
+    webai.show(file='board.jpg')
     webai.speaker.play(filename='logo.wav',sample_rate=64000)
     webai.cmdSerial.init()
     _thread.start_new_thread(webai.cmdSerial.run,())
-    webai.show(file='usb.jpg')
-    usbDisconnect()
-    wifiDisconnect()
 else:
     try:
         import gc, lcd, image, sys
         gc.collect()
-        # lcd.init()
         lcd.clear()
-        lcd.draw_string(0,0,'test',lcd.WHITE,lcd.BLACK)
         loading = image.Image(size=(lcd.width(), lcd.height()))
-        # loading.draw_rectangle((0, 0, lcd.width(), lcd.height()), fill=True, color=(255, 0, 0))
         info = "Webduino WebAI"
-        loading.draw_string(int(lcd.width()//2 - len(info) * 5)-5, (lcd.height())//2, info, color=(255, 255, 255), scale=2, mono_space=0)
-        # v = sys.implementation.version
-        # vers = 'V{}.{}.{} : webduino.io'.format(v[0],v[1],v[2])
-        # loading.draw_string(int(lcd.width()//2 - len(info) * 6), (lcd.height())//3 + 20, vers, color=(255, 255, 255), scale=1, mono_space=1)
+        loading.draw_string(int(lcd.width()//2 - len(info) * 5)-7, (lcd.height())//2-15, info, color=(255, 255, 255), scale=2, mono_space=0)
         lcd.display(loading)
-        # del loading, v, info, vers
         del loading,info
-        gc.collect()
     finally:
-        gc.collect()    
-
+        gc.collect()  
 '''
 
 banner = '''
