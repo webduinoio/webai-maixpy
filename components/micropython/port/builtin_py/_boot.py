@@ -134,7 +134,7 @@ except Exception as e:
 main_py = '''
 from webai import *
 
-if webai.cfg.get('wifi')==None and webai.adc()<500:
+if webai.cfg.get('wifi')==None:
     webai.show(file='board.jpg')
     webai.speaker.play(filename='logo.wav',sample_rate=64000)
     webai.cmdSerial.init()

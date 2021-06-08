@@ -553,7 +553,7 @@ class _res_:
 
     def init():
         __class__.addr = 0x700000
-        __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"bg.jpg":[5379864,25516],"blue.jpg":[5405380,58132],"board.jpg":[5463512,53420],"error.jpg":[5516932,5637],"face.py":[5522569,646],"faceMask.py":[5523215,3217],"green.jpg":[5526432,50776],"logo.jpg":[5577208,39598],"m01.jpg":[5616806,34824],"m02.jpg":[5651630,29248],"mleft.jpg":[5680878,33802],"monster.py":[5714680,1301],"mooncar.jpg":[5715981,53385],"mqttCar.py":[5769366,2285],"mright.jpg":[5771651,33773],"mrun.jpg":[5805424,31887],"ok.jpg":[5837311,5775],"red.jpg":[5843086,44478],"voice.py":[5887564,1762],"wifi_err.jpg":[5889326,50604],"wifi_ok.jpg":[5939930,46427],"yellow.jpg":[5986357,57615],"yoloCar.py":[6043972,4091]}
+        __class__.data = {"0.asr":[0,5256],"1.asr":[5256,5256],"1.font":[10512,2097152],"2.asr":[2107664,5256],"2.monster":[2112920,1633704],"3.asr":[3746624,5256],"3.face":[3751880,1601704],"4.asr":[5353584,5256],"5.asr":[5358840,5256],"6.asr":[5364096,5256],"7.asr":[5369352,5256],"8.asr":[5374608,5256],"bg.jpg":[5379864,25516],"blue.jpg":[5405380,58132],"board.jpg":[5463512,53420],"face.py":[5516932,1245],"faceMask.py":[5518177,1212],"green.jpg":[5519389,50776],"logo.jpg":[5570165,39598],"m01.jpg":[5609763,34824],"m02.jpg":[5644587,29248],"mleft.jpg":[5673835,33802],"monsters.py":[5707637,1296],"mooncar.jpg":[5708933,53385],"mqttCar.py":[5762318,2356],"mright.jpg":[5764674,33773],"mrun.jpg":[5798447,31887],"red.jpg":[5830334,44478],"voice.py":[5874812,2197],"wifi_err.jpg":[5877009,50604],"wifi_ok.jpg":[5927613,46427],"yellow.jpg":[5974040,57615],"yoloCar.py":[6031655,4086]}
     
     def loadImg(name,newImg=False):
         if not newImg:
@@ -783,7 +783,21 @@ class cfg:
 
 class cloud:
     container = 'user'
-    def download(self,url,filename=None,address=None,redirect=True,resize=320,img=True,showProgress=False):
+    def download(self, url, filename=None, address=None, redirect=True, resize=320, img=True, showProgress=False, enableLog=True):
+        def progress(percent):
+            webai.img = image.Image()
+            percent = int(percent)
+            webai.img.draw_rectangle(10,100,300,40,color=(64,128,64),thickness=2)
+            webai.img.draw_rectangle(10,100,percent*3,40,color=(64,128,64),thickness=2,fill=True)
+            webai.img.draw_string(130,150,str(percent)+"%",scale=2,x_spacing=2,mono_space=True)
+            if(percent < 100):
+                webai.img.draw_string(30,50,"Downloading...",scale=2,x_spacing=4,mono_space=False)
+            else:
+                webai.img.draw_string(30,50,"OK!",scale=2,x_spacing=4,mono_space=False)
+            webai.show(img=webai.img)
+            webai.img = None
+            gc.collect()
+        
         if redirect:
             server = "http://share.webduino.io/storage/"
             #server = "http://192.168.0.48:3000/storage/"
@@ -791,8 +805,7 @@ class cloud:
                 url = server + "redirect/img_resize/" + str(resize) + "/?url=" + url
             else:
                 url = server + "redirect?url=" + url
-        if showProgress:
-            print("redirect url:" , url)
+        webai.log(enableLog, "redirect url:%s"%url)
         http = MiniHttp()
         block_size = 10240*2
         start = time.ticks()
@@ -806,16 +819,15 @@ class cloud:
             try:
                 if http.raw is None:
                     http.connect(url)
-                    if showProgress:
-                        print("http connect.")
+                    webai.log(enableLog, "http connect.")
                 else:
                     if filesize == 0:
                         res = http.request(b"HEAD", {b'Connection': b'keep-alive'})
                         #print("res>>>",res)
                         if res[0] == 200:
                             filesize = int(res[2][b'Content-Length'], 10)
-                            print("")
-                            print("filesize:",filesize)
+                            webai.log(enableLog, "")
+                            webai.log(enableLog, "filesize: %s"%filesize)
                     else:
                         errCount=0
                         file_end = file_pos + block_size
@@ -832,28 +844,30 @@ class cloud:
                         spendSec = int((time.ticks() - start)/1000)
                         speed = 0
                         try:
-                           speed = int(file_pos/1024/spendSec*100)/100
+                            speed = int(file_pos/1024/spendSec*100)/100
                         except:
-                           pass
+                            pass
                         percent = int((file_pos / filesize)*1000)//10
                         if showProgress:
-                            webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2,x_spacing=6)
+                            #webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2,x_spacing=6)
+                            # webai.progress(percent)
+                            progress(percent)
                             webai.img = None
                             gc.collect()
                         if len(data) == (file_end - file_pos):
-                            print("writing:",hex(start_pos+file_pos),'~', hex(start_pos+file_end),percent,'% ,',speed,"KB")
+                            webai.log(enableLog, "writing: %s ~ %s %s %% %s KB"%(hex(start_pos+file_pos), hex(start_pos+file_end), percent, speed))
                             if not address==None:
                                 utils.flash_write(start_pos+file_pos,data)
                             if not filename==None:
                                 saveFile.write(data)
                             if file_end == filesize:
-                                print("100% , total time:",spendSec," seconds")
+                                webai.log(enableLog, "100%% , total time: %s seconds"%spendSec)
                                 break
                             else:
                                 file_pos = file_end
             except Exception as e:
                 errCount+=1
-                print(e,"errorCount:"+str(errCount))
+                webai.log(enableLog, "errorCount: %s"%(errCount), e)
                 time.sleep(0.5)
                 if errCount>4:
                     raise e
@@ -2342,5 +2356,8 @@ class webai:
                 img = webai.res.loadImg(file)
             webai.lcd.display(img)
 
+    def log(enable=True,content=None):
+        if enable:
+            print(content)
 
 webai.init(camera=False,speed=5)
