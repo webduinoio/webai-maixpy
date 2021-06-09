@@ -600,12 +600,12 @@ class _res_:
     def face():
         return __class__.addr+__class__.data['3.face'][0]
 
-# 0x900000 ~ 0x97FFFF  512KB 存放快取圖片，減少檔案系統使用
+# 0xF80000 ~ 0xFFFFFF  512KB 存放快取圖片，減少檔案系統使用
 class imgCache:
     def init():
         if not hasattr(__class__,'initialize'):
             if webai.cfg.get('cache') == None:
-                webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0xFFFE00}})
+                webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0xF80000}})
             imgCache.cache = webai.cfg.get('cache')
             imgCache.meta = imgCache.cache['meta']
             imgCache.files = imgCache.cache['files']
@@ -670,7 +670,7 @@ class imgCache:
         return img
 
     def clear():
-        webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0xFFFE00}})
+        webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0xF80000}})
 
 
 class cfg:
@@ -1114,7 +1114,7 @@ class esp8285:
                 if(myLine==None):
                     #print("read myLine:",myLine)
                     break
-                print("[mqttCallback]:",myLine)
+                # print("[mqttCallback]:",myLine)
                 myLine = myLine.decode().strip()
                 if(myLine=='mqttConnect'):
                     esp8285.mqttConnect = True
@@ -1866,7 +1866,7 @@ class cmdProcess:
             if snapshot:
                 startTime = time.ticks_ms()
                 webai.img = webai.snapshot()
-                #print('save>>>',filename,webai.imgCache.save(filename,webai.img))
+                print('save>>>',filename,webai.imgCache.save(filename,webai.img))
                 files.append(filename)
                 webai.img = None
                 gc.collect()
