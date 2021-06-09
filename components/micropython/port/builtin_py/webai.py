@@ -1160,11 +1160,13 @@ class esp8285:
 
     def pub(topic,msg,includeID=False):
         esp8285.mqttReady()
+        msg_base64 = ubinascii.b2a_base64(msg).decode("utf-8")
         if includeID:
-            mqttSetPush = 'AT+MQTT="push","{mqttUID}/{topic}","{msg}"'.format(mqttUID=esp8285.deviceID, topic=topic, msg=msg)
+            mqttSetPush = 'AT+MQTT="push","{mqttUID}/{topic}","{msg}"'.format(mqttUID=esp8285.deviceID, topic=topic, msg=msg_base64)
         else:
-            mqttSetPush = 'AT+MQTT="push","{topic}","{msg}"'.format(topic=topic, msg=msg)
+            mqttSetPush = 'AT+MQTT="push","{topic}","{msg}"'.format(topic=topic, msg=msg_base64)
         return esp8285.at(mqttSetPush)
+
 
     def waitInitFinish():
         myLine = ''
@@ -1221,8 +1223,16 @@ class esp8285:
         return resp
 
     def at(command, timeout=5000):
-        esp8285.uart.write(command + '\r\n')
-        #print('at command:',command)
+        startPos = 0
+        total_len = len(command)
+        max_len = 200
+        while total_len >= 0:
+            esp8285.uart.write(command[startPos:startPos + max_len])
+            # print('at command size', len(command[startPos:startPos + max_len]))
+            total_len -= max_len
+            startPos += max_len
+        esp8285.uart.write('\r\n')
+
         myLine = ''
         data = []
         startTime = time.ticks_ms()
