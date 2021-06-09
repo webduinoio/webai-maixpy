@@ -605,7 +605,7 @@ class imgCache:
     def init():
         if not hasattr(__class__,'initialize'):
             if webai.cfg.get('cache') == None:
-                webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0x900000}})
+                webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0xFFFE00}})
             imgCache.cache = webai.cfg.get('cache')
             imgCache.meta = imgCache.cache['meta']
             imgCache.files = imgCache.cache['files']
@@ -670,7 +670,7 @@ class imgCache:
         return img
 
     def clear():
-        webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0x900000}})
+        webai.cfg.put('cache',{'files':{},'meta':{'idx':0,'addr':0xFFFE00}})
 
 
 class cfg:
