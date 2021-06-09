@@ -849,9 +849,8 @@ class cloud:
                             pass
                         percent = int((file_pos / filesize)*1000)//10
                         if showProgress:
-                            #webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2,x_spacing=6)
-                            # webai.progress(percent)
-                            progress(percent)
+                            webai.draw_string(80,110,"Run..."+str(percent)+"%",scale=2,x_spacing=6)
+                            # progress(percent)
                             webai.img = None
                             gc.collect()
                         if len(data) == (file_end - file_pos):
@@ -867,7 +866,7 @@ class cloud:
                                 file_pos = file_end
             except Exception as e:
                 errCount+=1
-                webai.log(enableLog, "errorCount: %s"%(errCount), e)
+                webai.log(enableLog, "errorCount: %s"%(errCount))
                 time.sleep(0.5)
                 if errCount>4:
                     raise e
