@@ -1114,7 +1114,7 @@ class esp8285:
                 if(myLine==None):
                     #print("read myLine:",myLine)
                     break
-                #print("[mqttCallback]:",myLine)
+                print("[mqttCallback]:",myLine)
                 myLine = myLine.decode().strip()
                 if(myLine=='mqttConnect'):
                     esp8285.mqttConnect = True
@@ -1161,9 +1161,9 @@ class esp8285:
         esp8285.mqttReady()
         msg_base64 = ubinascii.b2a_base64(msg).decode("utf-8")
         if includeID:
-            mqttSetPush = 'AT+MQTT="push","{mqttUID}/{topic}","{msg}"'.format(mqttUID=esp8285.deviceID, topic=topic, msg=msg_base64)
+            mqttSetPush = 'AT+MQTT="push+","{mqttUID}/{topic}","{msg}"'.format(mqttUID=esp8285.deviceID, topic=topic, msg=msg_base64)
         else:
-            mqttSetPush = 'AT+MQTT="push","{topic}","{msg}"'.format(topic=topic, msg=msg_base64)
+            mqttSetPush = 'AT+MQTT="push+","{topic}","{msg}"'.format(topic=topic, msg=msg_base64)
         return esp8285.at(mqttSetPush)
 
 
