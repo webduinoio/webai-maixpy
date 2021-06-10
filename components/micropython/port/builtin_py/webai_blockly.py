@@ -122,10 +122,58 @@ class Camera:
             name = name + '.jpg'
         webai.img.save(name)
 
-class Speaker:
+class Mic:
+    import audio
+    from Maix import I2S
+    from fpioa_manager import fm
+    # user setting
+    #sample_rate   = 16000
+    sample_rate = 11025
 
+    # default seting
+    sample_points = 2048
+    wav_ch = 2
+
+    fm.register(board_info.MIC_I2S_IN, fm.fpioa.I2S0_IN_D0, force=True)
+    # 19 on Go Board and Bit(new version)
+    fm.register(board_info.MIC_I2S_WS, fm.fpioa.I2S0_WS, force=True)
+    fm.register(board_info.MIC_I2S_SCLK, fm.fpioa.I2S0_SCLK,
+                force=True)  # 18 on Go Board and Bit(new version)
+
+    rx = I2S(I2S.DEVICE_0)
+    rx.channel_config(rx.CHANNEL_0, rx.RECEIVER, align_mode=I2S.STANDARD_MODE)
+    rx.set_sample_rate(sample_rate)
+
+    def start(self, folder="", fileName="recorder", record_time=5):
+        if folder == "":
+            cwd = os.getcwd()[1:]
+            if cwd == "flash":
+                folder = "flash"
+                record_time = 1
+            else:
+                folder = "sd"
+        self.recorder = self.audio.Audio(
+            path="/"+folder+"/"+fileName+".wav", is_create=True, samplerate=self.sample_rate)
+        self.queue = []
+        # print("start recorder")
+        frame_cnt = record_time*self.sample_rate//self.sample_points
+
+        for i in range(frame_cnt):
+            tmp = self.rx.record(self.sample_points*self.wav_ch)
+            if len(self.queue) > 0:
+                ret = self.recorder.record(self.queue[0])
+                self.queue.pop(0)
+            self.rx.wait_record()
+            self.queue.append(tmp)
+            # print(str(i) + ":" + str(time.ticks()))
+
+        self.recorder.finish()
+        # print("finish")
+
+class Speaker:
     def start(self,fileName='logo', sample_rate=11025):
-        webai.speaker.play(filename=fileName,sample_rate=sample_rate)
+        cwd = os.getcwd()[1:]
+        webai.speaker.play(folder=cwd, filename=fileName,sample_rate=sample_rate)
 
     def setVolume(self,vol):
         webai.speaker.setVolume(vol)

@@ -189,12 +189,12 @@ sys.path.append('/flash')
 del devices
 
 
+print("<<<< [Start] >>>>")
+
 for i in range(200):
     time.sleep_ms(10)  # wait for key interrupt(for maixpy ide)
 del i
 
-print("<<<< [Start] >>>>")
-time.sleep_ms(100) # wait for stop command
 lcd.init()
 #time.sleep(0.5)
 

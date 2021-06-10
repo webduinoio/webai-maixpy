@@ -1075,8 +1075,8 @@ class esp8285:
         esp8285.wifiConnect = False
         esp8285.mqttConnect = False
         esp8285.reset()
-        fm.register(19, fm.fpioa.GPIOHS0)
-        esp8285.wifiStatusPin = GPIO(GPIO.GPIOHS0, GPIO.IN)
+        fm.register(19, fm.fpioa.GPIOHS17)
+        esp8285.wifiStatusPin = GPIO(GPIO.GPIOHS17, GPIO.IN)
         esp8285.wifiStatusPin.irq(esp8285.state,GPIO.IRQ_BOTH)
         fm.register(27, fm.fpioa.UART2_TX, force=True)
         fm.register(28, fm.fpioa.UART2_RX, force=True)
@@ -1756,7 +1756,8 @@ class cmdProcess:
 
         # server 需改成提供 http:// 方式
         url = info['url'].replace('https://','http://')
-        webai.cloud.download(url,img=False,redirect=False,filename='/flash/main.py')
+        cwd = os.getcwd()[1:]
+        webai.cloud.download(url,img=False,redirect=False,filename='/'+ cwd + '/main.py')
 
     def _TAKEPIC_YOLO(jsonArray):
         print("_TAKEPIC_YOLO>",jsonArray)
