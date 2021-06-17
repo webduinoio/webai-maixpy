@@ -272,7 +272,7 @@ class ObjectTracking():
             else:
                 cwd="flash"
                 if cwd=="flash":
-                    model=0xB90000
+                    model=0xd00000
                 else:
                     model="/sd/"+model+".kmodel"
                 self.task = self.kpu.load(model)
@@ -342,7 +342,7 @@ class ImageClassification():
         try:
             cwd="flash"
             if cwd=="flash":
-                model=0xD40000
+                model=0xD00000
             else:
                 model="/sd/"+model+".kmodel"
             self.classes=classes
