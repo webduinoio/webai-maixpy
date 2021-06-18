@@ -238,71 +238,35 @@ class Io:
                 __class__.PINUSE.append(PIN)
                 __class__.PINIO.append(IO)
 
-        
-
-
 
 class ObjectTracking():
     import KPU as kpu
-    import sensor
-        
+    
     def __init__(self,flip=0,classes=[],model=None,threshold=0.1,nms_value=0.1,w=320,h=224):
-        try:
-            webai.camera.reset()
-            webai.camera.set_pixformat(self.sensor.RGB565)
-            webai.camera.set_framesize(self.sensor.QVGA)
-            webai.camera.set_windowing((w, h))
-            webai.camera.set_vflip(flip)
-            #webai.camera.set_auto_gain(1)
-            #webai.camera.set_auto_whitebal(1)
-            #webai.camera.set_auto_exposure(1)
-            #webai.camera.set_brightness(3)
-            webai.camera.skip_frames(time = 2000)
-            webai.camera.run(1)
-        except Exception as e:
-            print(e)
-            sys.exit()
-            
-        try:
-            # modelPathStart=modelPath.find('(')
-            # modelPathEnd=modelPath.rfind(')')
-            # classes=modelPath[modelPathStart+1:modelPathEnd].split(',')
-            if model == 'monster':
-                self.task = self.kpu.load(webai.res.monster())
-            else:
-                cwd="flash"
-                if cwd=="flash":
-                    model=0xd00000
-                else:
-                    model="/sd/"+model+".kmodel"
-                self.task = self.kpu.load(model)
-            self.classes=classes
-            self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
-            self.kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
-        except Exception as e:
-            print('ObjectTracking exception:',e)
-            sys.exit()
+        webai.initCamera(flip)
+        webai.camera.set_windowing((w, h))
+        if model == 'monster':
+            self.task = self.kpu.load(webai.res.monster())
+        else:
+            self.task = self.kpu.load(0xd00000)
+        self.classes=classes
+        self.anchor = (1.889, 2.5245, 2.9465, 3.94056, 3.99987, 5.3658, 5.155437, 6.92275, 6.718375, 9.01025)
+        self.kpu.init_yolo2(self.task, threshold, nms_value, 5, self.anchor)
+
     def checkObjects(self):
-        try:
-            self.classesArr=[]
-            webai.img = self.sensor.snapshot()        
-            code = self.kpu.run_yolo2(self.task, webai.img)
-            if code:
-                for i in code:
-                    webai.img.draw_rectangle(i.rect())
-                    webai.lcd.display(webai.img)
-                    respList={"x":i.x(),"y":i.y(),"w":i.w(),"h":i.h(),"value":i.value(),"classid":i.classid(),"index":i.index(),"objnum":i.objnum(),"objname":self.classes[i.classid()]}
-                    self.classesArr.append(respList)
-                    # print(self.classesArr)
-                    # for i in code:
-                    #     lcd.draw_string(i.x(), i.y(), self.classes[i.classid()], lcd.RED, lcd.WHITE)
-                    #     lcd.draw_string(i.x(), i.y()+12, '%.3f'%i.value(), lcd.RED, lcd.WHITE)
-                return True
-            else:
+        self.classesArr=[]
+        webai.img = webai.snapshot()        
+        code = self.kpu.run_yolo2(self.task, webai.img)
+        if code:
+            for i in code:
+                webai.img.draw_rectangle(i.rect())
                 webai.lcd.display(webai.img)
-                return False
-        except Exception as e:
-            print(e)
+                respList={"x":i.x(),"y":i.y(),"w":i.w(),"h":i.h(),"value":i.value(),"classid":i.classid(),"index":i.index(),"objnum":i.objnum(),"objname":self.classes[i.classid()]}
+                self.classesArr.append(respList)
+            return True
+        else:
+            webai.lcd.display(webai.img)
+            return False
 
     def getObjects(self,obj):
         returnArr=[]
@@ -310,12 +274,6 @@ class ObjectTracking():
             if self.classes[i['classid']]==obj:
                 returnArr.append(i)
         return returnArr
-
-    def __del__(self):
-        self.kpu.deinit(self.task)
-        gc.collect()
-
-
 
 
 class ImageClassification():

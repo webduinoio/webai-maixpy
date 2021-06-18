@@ -1905,22 +1905,25 @@ class cmdProcess:
         while True:
             time.sleep(1)
 
-    #{ "fileName":"k-model",
+    # { "fileName":"k-model",
     #  "modelType":"mobileNet",
     #  "url":"http://vision-api.webduino.io/ml_models/5c129ef0-911f-11eb-83e1-536e68f620ec/model.kmodel",
-    #  "modelAddress":"0xD40000"}
+    #  "modelAddress":"0xD00000" }
     def _DOWNLOAD_MODEL(strObj):
         jsonObj = ujson.loads(strObj)
-        print("_DOWNLOAD_MODEL>",jsonObj)
         webai.cloud.download(jsonObj['url'],address=jsonObj['modelAddress'],img=False,redirect=True,showProgress=True)
-        webai.img = image.Image()
-        webai.draw_string(110,80,"下載完成  ",scale=2,img=webai.img,lcd_show=False)
-        webai.draw_string(95,130,"請重新開機  ",scale=2,img=webai.img)
+        webai.draw_string(58,90,"Download  completed.",scale=2,img=webai.img,lcd_show=False)
+        webai.draw_string(95,150,"please  reboot",scale=2,img=webai.img)
         while True:
             time.sleep(1)
 
     def _DOWNLOAD_FILE(jsonArray):
-        print("_DOWNLOAD_FILE>",jsonArray)
+        jsonObj = ujson.loads(strObj)
+        webai.cloud.download(jsonObj['url'],address=jsonObj['modelAddress'],img=False,redirect=True,showProgress=True)
+        webai.draw_string(58,90,"Download  completed.",scale=2,img=webai.img,lcd_show=False)
+        webai.draw_string(95,150,"please  reboot",scale=2,img=webai.img)
+        while True:
+            time.sleep(1)
 
 class QRCodeRunner:
 
